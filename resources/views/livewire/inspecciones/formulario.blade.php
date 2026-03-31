@@ -21,11 +21,20 @@
     $puedeEditarInspeccion = filled($inspeccion) && (!$certificadoGenerado || $vigenciaCertificadoVencida);
 @endphp
 
-<div x-data="{ step: 1, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observeModal: false, viewObservationModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @js($questionnaireGroups[0]['key'] ?? null) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="observeModal = true; viewObservationModal = false" x-on:observation-list-ready.window="viewObservationModal = true; observeModal = false" class="mt-5 space-y-5">
+<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observeModal: false, viewObservationModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @js($questionnaireGroups[0]['key'] ?? null) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="observeModal = true; viewObservationModal = false" x-on:observation-list-ready.window="viewObservationModal = true; observeModal = false" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
+    @include('livewire.inspecciones.partials.ui-theme')
     <div wire:loading.delay
-         wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+         wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
          class="fixed inset-x-0 top-0 z-[10001] pointer-events-none">
-        <div class="h-1 w-full animate-pulse" style="background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 50%, #10b981 100%);"></div>
+        <div class="insp-loading-bar w-full animate-pulse"></div>
+    </div>
+    <div wire:loading.delay.shortest
+         wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+         class="fixed right-4 top-4 z-[10002]">
+        <div class="insp-loading-pill">
+            <span class="insp-spinner"></span>
+            Cargando...
+        </div>
     </div>
     <div class="md:flex block items-center justify-between page-header-breadcrumb">
         <div>
@@ -37,10 +46,27 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-12 gap-3">
-        <div class="col-span-12 xl:col-span-3"><button type="button" wire:click="flushPendingResponses" @click="step = 1" :class="step === 1 ? 'border-primary bg-primary text-white shadow-sm' : 'border-defaultborder bg-white text-defaulttextcolor'" class="w-full rounded-2xl border px-4 py-4 text-left transition"><div class="flex items-center gap-3"><div class="flex h-10 w-10 items-center justify-center rounded-full" :class="step === 1 ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'">1</div><div><div class="font-semibold">Datos Generales</div><div class="text-[0.75rem]" :class="step === 1 ? 'text-white/80' : 'text-[#8c9097]'">Empresa, equipo y datos base</div></div></div></button></div>
-        <div class="col-span-12 xl:col-span-3"><button type="button" @click="if (started) step = 2" :class="step === 2 ? 'border-primary bg-primary text-white shadow-sm' : 'border-defaultborder bg-white text-defaulttextcolor'" class="w-full rounded-2xl border px-4 py-4 text-left transition" :disabled="!started" :style="!started ? 'opacity:.65; cursor:not-allowed;' : ''"><div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="flex h-10 w-10 items-center justify-center rounded-full" :class="step === 2 ? 'bg-white/20 text-white' : 'bg-info/10 text-info'">2</div><div><div class="font-semibold">Inspección</div><div class="text-[0.75rem]" :class="step === 2 ? 'text-white/80' : 'text-[#8c9097]'">Respuestas a preguntas</div></div></div><span x-show="!started" class="badge bg-warning/10 text-warning">Bloqueado</span></div></button></div>
-        <div class="col-span-12 xl:col-span-3"><button type="button" wire:click="flushPendingResponses" @click="if (started) step = 3" :class="step === 3 ? 'border-primary bg-primary text-white shadow-sm' : 'border-defaultborder bg-white text-defaulttextcolor'" class="w-full rounded-2xl border px-4 py-4 text-left transition" :disabled="!started" :style="!started ? 'opacity:.65; cursor:not-allowed;' : ''"><div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="flex h-10 w-10 items-center justify-center rounded-full" :class="step === 3 ? 'bg-white/20 text-white' : 'bg-success/10 text-success'">3</div><div><div class="font-semibold">Generación de Certificado</div><div class="text-[0.75rem]" :class="step === 3 ? 'text-white/80' : 'text-[#8c9097]'">Cierre y emisión</div></div></div><span x-show="!started" class="badge bg-warning/10 text-warning">Bloqueado</span></div></button></div>
+    <div class="insp-wizard">
+        <button type="button" wire:click="flushPendingResponses" @click="step = 1"
+                class="insp-wizard-item"
+                :class="step === 1 ? 'is-active' : ''">
+            <div class="insp-wizard-step">Paso 1</div>
+            <div class="insp-wizard-title">Datos Generales</div>
+        </button>
+        <button type="button" @click="if (started) step = 2"
+                class="insp-wizard-item"
+                :class="(step === 2 ? 'is-active ' : '') + (!started ? 'is-locked' : '')"
+                :disabled="!started">
+            <div class="insp-wizard-step">Paso 2</div>
+            <div class="insp-wizard-title">Inspección</div>
+        </button>
+        <button type="button" wire:click="flushPendingResponses" @click="if (started) step = 3"
+                class="insp-wizard-item"
+                :class="(step === 3 ? 'is-active ' : '') + (!started ? 'is-locked' : '')"
+                :disabled="!started">
+            <div class="insp-wizard-step">Paso 3</div>
+            <div class="insp-wizard-title">Generación de Certificado</div>
+        </button>
     </div>
 
     <div x-show="step === 1" x-transition.opacity.duration.250ms x-cloak class="space-y-4 transition-opacity duration-200">
@@ -265,31 +291,29 @@
                                 <span class="badge bg-primary/10 text-primary">{{ count($responsesInput) }} preguntas</span>
                             </div>
                         </div>
-                        <div class="col-span-12 md:col-span-3 rounded-xl px-4 py-3" style="background-color:#f3e8ff;border:1px solid #d8b4fe;">
+                        {{--  <div class="col-span-12 md:col-span-3 rounded-xl px-4 py-3" style="background-color:#f3e8ff;border:1px solid #d8b4fe;">
                             <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#6d28d9;">Ingreso</span>
                         </div>
                         <div class="col-span-12 md:col-span-3 rounded-xl px-4 py-3" style="background-color:#dcfce7;border:1px solid #86efac;">
                             <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#059669;">Salida</span>
-                        </div>
+                        </div> --}}
                     </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-defaultborder bg-white px-4 py-3 shadow-sm">
                         <div>
                             <div class="font-semibold text-[0.95rem] text-defaulttextcolor">Preguntas e inspección</div>
-                            <div class="text-[0.78rem] text-[#8c9097]">Una sola categoría y subcategoría se muestran a la vez.</div>
+                            {{-- <div class="text-[0.78rem] text-[#8c9097]">Una sola categoría y subcategoría se muestran a la vez.</div> --}}
                         </div>
-                        <button type="button" class="ti-btn bg-primary text-white" @click="customQuestionModal = true">
-                            <i class="ri-add-line me-1"></i>Registrar pregunta adicional
-                        </button>
                     </div>
 
                     @forelse ($questionnaireGroups as $group)
                         <div class="rounded-2xl border border-defaultborder overflow-hidden bg-white shadow-sm"
                              wire:mouseleave="saveSubgroup('{{ $group['key'] }}')">
-                            <button type="button"
-                                    class="w-full text-left px-4 py-4 transition"
-                                    @click="openQuestionGroup = openQuestionGroup === '{{ $group['key'] }}' ? null : '{{ $group['key'] }}'"
-                                    :style="openQuestionGroup === '{{ $group['key'] }}' ? 'background-color:#e9d5ff;' : 'background-color:#f8fafc;'">
+                            <div role="button" tabindex="0"
+                                 class="w-full text-left px-4 py-4 transition cursor-pointer"
+                                 @click="openQuestionGroup = openQuestionGroup === '{{ $group['key'] }}' ? null : '{{ $group['key'] }}'"
+                                 @keydown.enter.prevent="openQuestionGroup = openQuestionGroup === '{{ $group['key'] }}' ? null : '{{ $group['key'] }}'"
+                                 :style="openQuestionGroup === '{{ $group['key'] }}' ? 'background-color:#e9d5ff;' : 'background-color:#f8fafc;'">
                                 <div class="flex items-center justify-between gap-4">
                                     <div>
                                         <div class="font-semibold" style="color:#4c1d95;">Categoría: {{ $group['categoria'] }}</div>
@@ -298,12 +322,18 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <button type="button" class="ti-btn ti-btn-sm bg-primary text-white"
+                                                title="Registrar pregunta adicional en esta subcategoría"
+                                                wire:click="prepareCustomQuestionModal({{ $group['categoria_id'] }}, {{ $group['subcategoria_id'] }}, '{{ $group['key'] }}')"
+                                                @click.stop>
+                                            <i class="ri-add-line me-1"></i>Pregunta adicional
+                                        </button>
                                         <span class="badge bg-primary/10 text-primary">{{ count($group['responses']) }} preguntas</span>
                                         <i class="ri-arrow-down-s-line text-[1.25rem] text-[#8c9097] transition-transform"
                                            :class="openQuestionGroup === '{{ $group['key'] }}' ? 'rotate-180' : ''"></i>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
 
                             <div x-show="openQuestionGroup === '{{ $group['key'] }}'" x-transition.opacity.duration.200ms class="border-t border-defaultborder overflow-x-auto">
                                 <div class="min-w-[980px]">
@@ -361,10 +391,14 @@
                                             </div>
                                             <div class="col-span-1 px-3 py-5">
                                                 <div class="flex justify-end gap-2">
-                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full" wire:click="openObservationList({{ $row['id'] }})" title="Ver observaciones">
+                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full"
+                                                            wire:click="openObservationList({{ $row['id'] }})"
+                                                            title="Ver observaciones">
                                                         <i class="ri-eye-line"></i>
                                                     </button>
-                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm bg-warning text-white" wire:click="prepareObservationModal({{ $row['id'] }})" title="Registrar observación">
+                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm bg-warning text-white"
+                                                            wire:click="prepareObservationModal({{ $row['id'] }})"
+                                                            title="Registrar observación">
                                                         <i class="ri-add-line"></i>
                                                     </button>
                                                 </div>
@@ -381,7 +415,7 @@
                         </div>
                     @endforelse
 
-                    <div class="rounded-3xl border border-slate-200 bg-white p-4 md:p-5 shadow-lg space-y-4" style="border-top:4px solid #7c3aed;">
+                    <div class="insp-upload-panel p-4 md:p-5 space-y-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <div class="font-semibold uppercase tracking-[0.12em] text-[#4b5563] text-[0.82rem]">Subir archivos</div>
@@ -425,7 +459,8 @@
                             </div>
                         </div>
 
-                        <div class="border-t border-defaultborder pt-4" style="border-top:1px solid #e5e7eb;">
+                        <div class="pt-4">
+                            <div class="insp-divider mb-4"></div>
                             <div class="mb-3 flex items-center gap-3">
                                 <div class="h-5 w-[3px] rounded-full bg-primary"></div>
                                 <div class="text-lg font-semibold">Archivos cargados</div>
@@ -524,6 +559,7 @@
         </div>
     </div>
 
+    <template x-teleport="body">
     <div x-show="inspectionFilePreviewModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="inspectionFilePreviewModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -549,18 +585,41 @@
             </div>
         </div>
     </div>
+    </template>
 
-    <div x-show="customQuestionModal" x-cloak class="fixed inset-0 z-[9999]">
-        <div class="absolute inset-0 bg-slate-950/60" @click="customQuestionModal = false"></div>
-        <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
-            <div class="w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-[#0b1220]">
-                <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4"><h3 class="text-[15px] font-semibold">Nueva pregunta personalizada</h3><button type="button" class="text-slate-500" @click="customQuestionModal = false"><i class="ri-close-line text-[1.35rem] leading-none"></i></button></div>
-                <div class="px-6 py-5 space-y-4"><div><label class="form-label">Enunciado</label><textarea class="form-control" rows="3" placeholder="Escribe la pregunta personalizada"></textarea></div><div class="grid grid-cols-12 gap-4"><div class="col-span-12 md:col-span-6"><label class="form-label">Respuesta ingreso</label><input type="text" class="form-control" placeholder="Dato o respuesta de ingreso"></div><div class="col-span-12 md:col-span-6"><label class="form-label">Respuesta salida</label><input type="text" class="form-control" placeholder="Dato o respuesta de salida"></div></div></div>
-                <div class="flex justify-end gap-2 border-t border-defaultborder px-6 py-4"><button type="button" class="ti-btn ti-btn-light" @click="customQuestionModal = false">Cancelar</button><button type="button" class="ti-btn bg-primary text-white">Guardar pregunta</button></div>
+    <template x-teleport="body">
+        <div x-show="customQuestionModal" x-cloak class="fixed inset-0 z-[9999]">
+            <div class="absolute inset-0 bg-slate-950/60" @click="customQuestionModal = false"></div>
+            <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
+                <div class="w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-[#0b1220]">
+                    <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4"><h3 class="text-[15px] font-semibold">Nueva pregunta personalizada</h3><button type="button" class="text-slate-500" @click="customQuestionModal = false"><i class="ri-close-line text-[1.35rem] leading-none"></i></button></div>
+                    <div class="px-6 py-5 space-y-4">
+                        <div>
+                            <label class="form-label">Enunciado</label>
+                            <textarea class="form-control" rows="3" placeholder="Escribe la pregunta personalizada" wire:model.defer="customQuestionForm.enunciado"></textarea>
+                            @error('customQuestionForm.enunciado') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-12 md:col-span-6">
+                                <label class="form-label">Respuesta ingreso</label>
+                                <input type="text" class="form-control" placeholder="Dato o respuesta de ingreso" wire:model.defer="customQuestionForm.ingreso_respuesta">
+                            </div>
+                            <div class="col-span-12 md:col-span-6">
+                                <label class="form-label">Respuesta salida</label>
+                                <input type="text" class="form-control" placeholder="Dato o respuesta de salida" wire:model.defer="customQuestionForm.salida_respuesta">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-defaultborder px-6 py-4">
+                        <button type="button" class="ti-btn ti-btn-light" @click="customQuestionModal = false">Cancelar</button>
+                        <button type="button" class="ti-btn bg-primary text-white" wire:click="saveCustomQuestion">Guardar pregunta</button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </template>
 
+    <template x-teleport="body">
     <div x-show="viewObservationModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="viewObservationModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -579,7 +638,9 @@
             </div>
         </div>
     </div>
+    </template>
 
+    <template x-teleport="body">
     <div x-show="observeModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="observeModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -610,6 +671,8 @@
             </div>
         </div>
     </div>
+    </template>
+    <template x-teleport="body">
     <div x-show="companyModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="companyModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -800,7 +863,9 @@
             </div>
         </div>
     </div>
+    </template>
 
+    <template x-teleport="body">
     <div x-show="inspectionDetailModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="inspectionDetailModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -853,7 +918,9 @@
             </div>
         </div>
     </div>
+    </template>
 
+    <template x-teleport="body">
     <div x-show="equipmentModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="equipmentModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -979,11 +1046,6 @@
             </div>
         </div>
     </div>
-
-
-
-
-
-
-
+    </template>
+</div>
 

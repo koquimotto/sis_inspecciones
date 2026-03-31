@@ -210,12 +210,15 @@
                 <!-- Header Profile -->
                 <div class="header-element md:!px-[0.65rem] px-2 hs-dropdown !items-center ti-dropdown [--placement:bottom-left]">
 
+                @php($authUser = Auth::user())
                 <button id="dropdown-profile" type="button"
                     class="hs-dropdown-toggle ti-dropdown-toggle !gap-2 !p-0 flex-shrink-0 sm:me-2 me-0 !rounded-full !shadow-none text-xs align-middle !border-0 !shadow-transparent ">
-                    <img class="inline-block rounded-full " src="@if (Auth::user()->avatar != ''){{ URL::asset('images/' . Auth::user()->avatar) }}@else{{ URL::asset('img/user.jpg') }}@endif"  width="32" height="32" alt="Image Description">
+                    <img class="inline-block rounded-full "
+                        src="{{ !empty($authUser?->avatar) ? URL::asset('images/' . $authUser->avatar) : URL::asset('img/user.jpg') }}"
+                        width="32" height="32" alt="Image Description">
                 </button>
                 <div class="md:block hidden dropdown-profile">
-                    <p class="font-semibold mb-0 leading-none text-[#536485] text-[0.813rem] ">{{Auth::user()->name}}</p>
+                    <p class="font-semibold mb-0 leading-none text-[#536485] text-[0.813rem] ">{{ $authUser?->name ?? 'Usuario' }}</p>
                     <span class="opacity-[0.7] font-normal text-[#536485] block text-[0.6875rem] ">Web Designer</span>
                 </div>
                 <div

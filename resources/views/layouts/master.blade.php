@@ -43,6 +43,15 @@
             Livewire.on('swal', (e) => {
               const requireConfirm = !!e.requireConfirm;
               const asToast = !!e.toast;
+              const type = e.type ?? 'success';
+              const toastTheme = {
+                success: { background: '#dcfce7', color: '#14532d', iconColor: '#16a34a' },
+                info: { background: '#dbeafe', color: '#1e3a8a', iconColor: '#2563eb' },
+                warning: { background: '#fef3c7', color: '#78350f', iconColor: '#d97706' },
+                error: { background: '#fee2e2', color: '#7f1d1d', iconColor: '#dc2626' },
+              };
+              const theme = toastTheme[type] ?? toastTheme.success;
+
               Swal.fire({
                 icon: e.type ?? 'success',
                 title: e.title ?? 'OK',
@@ -54,7 +63,17 @@
                 confirmButtonText: e.confirmText ?? 'Aceptar',
                 timerProgressBar: !requireConfirm,
                 allowOutsideClick: !requireConfirm,
-                allowEscapeKey: !requireConfirm
+                allowEscapeKey: !requireConfirm,
+                background: asToast ? theme.background : undefined,
+                color: asToast ? theme.color : undefined,
+                iconColor: asToast ? theme.iconColor : undefined,
+                customClass: asToast ? {
+                  popup: '!rounded-xl !shadow-lg !border !border-black/5 !px-3 !py-2',
+                  title: '!text-[0.92rem] !font-semibold !mb-0.5',
+                  htmlContainer: '!text-[0.8rem] !mt-0.5',
+                  closeButton: '!text-slate-500 hover:!text-slate-800'
+                } : undefined,
+                showCloseButton: asToast,
               });
             });
           });

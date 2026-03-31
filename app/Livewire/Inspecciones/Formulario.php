@@ -33,6 +33,7 @@ class Formulario extends Component
 {
     use WithFileUploads;
 
+    public int $uiStep = 1;
     public ?Inspeccion $inspeccion = null;
     public string $empresaSearch = '';
     public array $empresaSuggestions = [];
@@ -85,6 +86,8 @@ class Formulario extends Component
     public array $inspectionFiles = [];
     public bool $inspectionFilePreviewModal = false;
     public array $inspectionFilePreview = [];
+    public array $customQuestionForm = [];
+    public ?string $customQuestionGroupKey = null;
 
     public function mount(?Inspeccion $inspeccion = null): void
     {
@@ -122,6 +125,7 @@ class Formulario extends Component
         $this->refreshInspectionContext();
         $this->observationForm = $this->defaultObservationForm();
         $this->inspectionFileForm = $this->defaultInspectionFileForm();
+        $this->customQuestionForm = $this->defaultCustomQuestionForm();
     }
 
     public function render(): View
@@ -1040,6 +1044,52 @@ class Formulario extends Component
         $this->dispatch('swal', type: 'success', title: 'Observacion registrada', text: 'La observacion se guardo correctamente.', toast: true, timer: 2200);
     }
 
+    public function prepareCustomQuestionModal(int $categoriaId, int $subCategoriaId, string $groupKey): void
+    {
+        $this->customQuestionGroupKey = $groupKey;
+        $this->customQuestionForm = $this->defaultCustomQuestionForm();
+        $this->customQuestionForm['cuestionario_categoria_id'] = $categoriaId;
+        $this->customQuestionForm['cuestionario_sub_categoria_id'] = $subCategoriaId;
+        $this->dispatch('custom-question-ready');
+    }
+
+    public function saveCustomQuestion(): void
+    {
+        if (!$this->currentDetalleInspeccionId) {
+            $this->dispatch('swal', type: 'warning', title: 'Inspección no disponible', text: 'Primero debes iniciar una inspección para registrar preguntas adicionales.');
+            return;
+        }
+
+        $data = $this->validate([
+            'customQuestionForm.cuestionario_categoria_id' => ['required', 'integer', Rule::exists('cuestionario_categorias', 'id')],
+            'customQuestionForm.cuestionario_sub_categoria_id' => ['required', 'integer', Rule::exists('cuestionario_sub_categorias', 'id')],
+            'customQuestionForm.enunciado' => ['required', 'string', 'max:255'],
+            'customQuestionForm.ingreso_respuesta' => ['nullable', 'string', 'max:255'],
+            'customQuestionForm.salida_respuesta' => ['nullable', 'string', 'max:255'],
+        ], [], [
+            'customQuestionForm.enunciado' => 'enunciado',
+        ]);
+
+        CuestionarioRespuesta::query()->create([
+            'detalle_inspeccion_id' => (int) $this->currentDetalleInspeccionId,
+            'cuestionario_categoria_id' => (int) $data['customQuestionForm']['cuestionario_categoria_id'],
+            'cuestionario_sub_categoria_id' => (int) $data['customQuestionForm']['cuestionario_sub_categoria_id'],
+            'cuestionario_pregunta_id' => null,
+            'cuestionario_pregunta_personalizada' => trim((string) $data['customQuestionForm']['enunciado']),
+            'ingreso_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['ingreso_respuesta'] ?? null),
+            'salida_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['salida_respuesta'] ?? null),
+            'estado' => 1,
+            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
+        ]);
+
+        $groupKey = (string) ($this->customQuestionGroupKey ?? '');
+        $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
+        $this->customQuestionForm = $this->defaultCustomQuestionForm();
+        $this->dispatch('custom-question-saved', groupKey: $groupKey);
+        $this->dispatch('swal', type: 'success', title: 'Pregunta adicional registrada', text: 'La pregunta se agregó correctamente.', toast: true, timer: 2200);
+    }
+
     public function attachInspectionFile(): void
     {
         if (!$this->currentInspeccionId || !$this->selectedEmpresaEquipoId || !$this->currentDetalleInspeccionId) {
@@ -1547,6 +1597,8 @@ class Formulario extends Component
             if (!isset($groups[$groupKey])) {
                 $groups[$groupKey] = [
                     'key' => $groupKey,
+                    'categoria_id' => (int) $respuesta->cuestionario_categoria_id,
+                    'subcategoria_id' => (int) $respuesta->cuestionario_sub_categoria_id,
                     'categoria' => $respuesta->categoria?->descripcion ?: 'Sin categoria',
                     'subcategoria' => $respuesta->subCategoria?->descripcion ?: 'Sin subcategoria',
                     'responses' => [],
@@ -1639,6 +1691,17 @@ class Formulario extends Component
     {
         $text = trim((string) ($value ?? ''));
         return $text === '' ? null : $text;
+    }
+
+    private function defaultCustomQuestionForm(): array
+    {
+        return [
+            'cuestionario_categoria_id' => null,
+            'cuestionario_sub_categoria_id' => null,
+            'enunciado' => '',
+            'ingreso_respuesta' => '',
+            'salida_respuesta' => '',
+        ];
     }
 
     private function resolveInspectionNumber(): int

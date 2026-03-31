@@ -1,8 +1,22 @@
-<div x-data="{ confirmDelete(type, id, label) { window.dispatchEvent(new CustomEvent('confirmar-eliminar-catalogo-inspeccion', { detail: { type, id, text: `Se eliminara el registro ${label}.` } })); } }" class="mt-5 space-y-4">
+<div x-data="{ confirmDelete(type, id, label) { window.dispatchEvent(new CustomEvent('confirmar-eliminar-catalogo-inspeccion', { detail: { type, id, text: `Se eliminara el registro ${label}.` } })); } }" class="insp-ui mt-5 space-y-4">
+    @include('livewire.inspecciones.partials.ui-theme')
+    <div wire:loading.delay
+         wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
+         class="fixed inset-x-0 top-0 z-[10001] pointer-events-none">
+        <div class="insp-loading-bar w-full animate-pulse"></div>
+    </div>
+    <div wire:loading.delay.shortest
+         wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
+         class="fixed right-4 top-4 z-[10002]">
+        <div class="insp-loading-pill">
+            <span class="insp-spinner"></span>
+            Actualizando...
+        </div>
+    </div>
     <div class="box">
         <div class="justify-between box-header">
             <div>
-                <div class="box-title !mb-0">Configuracion de preguntas de inspeccion</div>
+                <div class="box-title !mb-0">Configuración de preguntas de inspección</div>
             </div>
 
         </div>
@@ -12,11 +26,11 @@
             <div class="h-full box">
                 <div class="justify-between box-header">
                     <div>
-                        <div class="box-title !mb-0">Categorias</div>
+                        <div class="box-title !mb-0">Categorías</div>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="input-group !w-[220px]"><input type="text" class="form-control"
-                                placeholder="Buscar categoria..."
+                                placeholder="Buscar categoría..."
                                 wire:model.live.debounce.300ms="searchCategoria" /><button
                                 class="ti-btn ti-btn-light !mb-0" type="button"
                                 wire:click="$set('searchCategoria', '')"><i class="ri-search-line"></i></button></div>
@@ -73,11 +87,11 @@
             <div class="h-full box">
                 <div class="justify-between box-header">
                     <div>
-                        <div class="box-title !mb-0">Subcategorias</div>
+                        <div class="box-title !mb-0">Subcategorías</div>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="input-group !w-[220px]"><input type="text" class="form-control"
-                                placeholder="Buscar subcategoria..."
+                                placeholder="Buscar subcategoría..."
                                 wire:model.live.debounce.300ms="searchSubCategoria" /><button
                                 class="ti-btn ti-btn-light !mb-0" type="button"
                                 wire:click="$set('searchSubCategoria', '')"><i class="ri-search-line"></i></button>
@@ -120,7 +134,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-8 text-[#8c9097]">No hay subcategorias
+                                        <td colspan="4" class="text-center py-8 text-[#8c9097]">No hay subcategorías
                                             registradas.</td>
                                     </tr>
                                 @endforelse
@@ -134,7 +148,7 @@
             <div class="box">
                 <div class="justify-between box-header">
                     <div>
-                        <div class="box-title !mb-0">Preguntas de inspeccion</div>
+                        <div class="box-title !mb-0">Preguntas de inspección</div>
                     </div>
                     <div class="flex flex-wrap items-center justify-end gap-2">
                         @if ($selectedCategoriaId || $selectedSubCategoriaId)
@@ -167,8 +181,8 @@
                             <tbody>
                                 @forelse ($preguntas as $pregunta)
                                     <tr class="border-b border-defaultborder">
-                                        <td>{{ $pregunta->categoria?->descripcion ?: '�' }}</td>
-                                        <td>{{ $pregunta->subCategoria?->descripcion ?: '�' }}</td>
+                                        <td>{{ $pregunta->categoria?->descripcion ?: '—' }}</td>
+                                        <td>{{ $pregunta->subCategoria?->descripcion ?: '—' }}</td>
                                         <td class="min-w-[280px]">
                                             <div class="font-semibold">{{ $pregunta->pregunta_enunciado }}</div>
                                             <div class="text-[0.72rem] text-[#8c9097]">Observaciones:
@@ -177,8 +191,9 @@
                                         </td>
                                         <td>
                                             @php($vinculada = filled($pregunta->equipo_tipo_ids) || filled($pregunta->equipo_categoria_ids) || filled($pregunta->equipo_marca_ids) || filled($pregunta->equipo_modelo_ids))
-                                            <span
-                                                class="badge {{ $vinculada ? 'bg-info/10 text-info' : 'bg-light text-defaulttextcolor' }}">{{ $vinculada ? 'Si' : 'Libre' }}</span>
+                                            <span class="insp-chip {{ $vinculada ? 'insp-chip--info' : 'insp-chip--success' }}">
+                                                {{ $vinculada ? 'Sí' : 'Libre' }}
+                                            </span>
                                         </td>
                                         <td>
                                             <div class="text-[0.75rem]">IN:
@@ -216,6 +231,7 @@
         </div>
     </div>
 
+    <template x-teleport="body">
     <div x-data="{ modal: @entangle('categoriaModal').live }" x-show="modal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="modal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -244,7 +260,9 @@
             </div>
         </div>
     </div>
+    </template>
 
+    <template x-teleport="body">
     <div x-data="{ modal: @entangle('subCategoriaModal').live }" x-show="modal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="modal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -274,6 +292,8 @@
             </div>
         </div>
     </div>
+    </template>
+    <template x-teleport="body">
     <div x-data="{ modal: @entangle('preguntaModal').live }" x-show="modal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="modal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -560,6 +580,7 @@
             </div>
         </div>
     </div>
+    </template>
 </div>
 
 
