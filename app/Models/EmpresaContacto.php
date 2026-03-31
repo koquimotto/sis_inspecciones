@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EmpresaContacto extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'empresa_contacto';
 
@@ -17,28 +20,42 @@ class EmpresaContacto extends Model
         'email',
         'telefono',
         'estado',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     protected $casts = [
         'persona_id' => 'integer',
         'empresa_id' => 'integer',
-        'estado'     => 'integer',
-        'user_id'    => 'integer',
+        'estado' => 'boolean',
+        'created_by' => 'integer',
+        'updated_by' => 'integer',
+        'deleted_by' => 'integer',
     ];
 
-    public function persona()
+    public function persona(): BelongsTo
     {
         return $this->belongsTo(Persona::class, 'persona_id');
     }
 
-    public function empresa()
+    public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    public function user()
+    public function creadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function actualizadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function eliminadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 }

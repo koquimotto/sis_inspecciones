@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Modelos;
 
-use Livewire\Component;
+use App\Livewire\Catalogos\CatalogoConfig;
+use App\Livewire\Catalogos\CatalogoFiltroBase;
 
-class Filtro extends Component
+class Filtro extends CatalogoFiltroBase
 {
-    public function render()
+    protected function config(): array
     {
-        return view('livewire.modelos.filtro');
+        return CatalogoConfig::modelos();
     }
 }

@@ -1,17 +1,14 @@
 @extends('layouts.master')
 @section('title', 'Servicios - EL CUMBE EIRL')
 
-@section('styles') @endsection
-
 @section('content')
-    <div  class="row box mt-5">
-        
-        {{-- <livewire:empresas.filtro />
-        <livewire:empresas.tabla />
-        
-        <livewire:empresas.modal /> --}}
+    <div class="row box mt-5">
+        <livewire:servicios.filtro />
+        <livewire:servicios.tabla />
+        <livewire:servicios.modal />
     </div>
-    
 @endsection
 
-@section('scripts') @endsection
+@section('scripts')
+    @include('livewire.catalogos.scripts', ['module' => 'servicios', 'deleteEvent' => 'servicios:confirmar-eliminar'])
+@endsection

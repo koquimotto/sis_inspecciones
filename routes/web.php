@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\Inspeccion;
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\DashboardsController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\CursoController;
@@ -26,7 +26,7 @@ Route::prefix('usuarios')->name('usuarios.')->group(function () {
 
     // // DataTables (server-side)
     // Route::get('/data', [UsuarioController::class, 'data'])->name('data'); // admin.usuarios.data
-    
+
     // Route::get('/persona/{dni}', [UsuarioController::class, 'buscarPersonaPorDni'])
     //     ->where('dni', '[0-9]{8}')
     //     ->name('persona');
@@ -72,6 +72,22 @@ Route::prefix('inspecciones')->name('inspecciones.')->group(function () {
         return view('livewire.inspecciones.index');
     })->name('index');
 
+    Route::get('/nueva', function () {
+        return view('livewire.inspecciones.form', [
+            'inspeccion' => null,
+        ]);
+    })->name('create');
+
+    Route::get('/catalogos', function () {
+        return view('livewire.inspecciones.catalogos');
+    })->name('catalogos');
+
+    Route::get('/{inspeccion}', function (Inspeccion $inspeccion) {
+        return view('livewire.inspecciones.form', [
+            'inspeccion' => $inspeccion,
+        ]);
+    })->name('edit');
+
 });
 
 // Gestión de observaciones
@@ -101,11 +117,29 @@ Route::prefix('marcas')->name('marcas.')->group(function () {
 
 });
 
+// Gestión de categorias
+Route::prefix('categorias')->name('categorias.')->group(function () {
+
+    Route::get('/', function () {
+        return view('livewire.categorias.index');
+    })->name('index');
+
+});
+
 // Gestión de modelos
 Route::prefix('modelos')->name('modelos.')->group(function () {
 
     Route::get('/', function () {
         return view('livewire.modelos.index');
+    })->name('index');
+
+});
+
+// Gestión de tipos
+Route::prefix('tipos')->name('tipos.')->group(function () {
+
+    Route::get('/', function () {
+        return view('livewire.tipos.index');
     })->name('index');
 
 });

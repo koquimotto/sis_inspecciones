@@ -41,12 +41,20 @@
         <script>
           document.addEventListener('livewire:init', () => {
             Livewire.on('swal', (e) => {
+              const requireConfirm = !!e.requireConfirm;
+              const asToast = !!e.toast;
               Swal.fire({
                 icon: e.type ?? 'success',
                 title: e.title ?? 'OK',
                 text: e.text ?? '',
-                timer: 1600,
-                showConfirmButton: false
+                toast: asToast,
+                position: e.position ?? (asToast ? 'top-end' : 'center'),
+                timer: requireConfirm ? undefined : (e.timer ?? 1600),
+                showConfirmButton: requireConfirm ? true : !!e.showConfirmButton,
+                confirmButtonText: e.confirmText ?? 'Aceptar',
+                timerProgressBar: !requireConfirm,
+                allowOutsideClick: !requireConfirm,
+                allowEscapeKey: !requireConfirm
               });
             });
           });

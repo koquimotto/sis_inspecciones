@@ -2,26 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens;
+    use HasFactory;
+    use Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var string[]
-     */
     protected $fillable = [
         'persona_id',
         'empresa_id',
+        'user_id',
         'name',
         'email',
         'username',
@@ -30,46 +27,22 @@ class User extends Authenticatable
         'avatar',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array
-     */
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
     protected $casts = [
+        'persona_id' => 'integer',
+        'empresa_id' => 'integer',
+        'user_id' => 'integer',
         'email_verified_at' => 'datetime',
+        'two_factor_confirmed_at' => 'datetime',
+        'estado' => 'integer',
+        'password' => 'hashed',
     ];
-
-    public function rolesActivos()
-    {
-        return $this->roles()->wherePivot('estado', 1)->where('roles.estado', 1);
-    }
-
-    public function hasRole(string $rolNombre): bool
-    {
-        return $this->rolesActivos()->where('roles.nombre', $rolNombre)->exists();
-    }
-
-    public function roleNames(): array
-    {
-        return $this->rolesActivos()->pluck('roles.nombre')->unique()->values()->toArray();
-    }
-
-    public function saludarConRol(): string
-    {
-        $roles = $this->roleNames();
-        $rolTexto = count($roles) ? implode(', ', $roles) : 'sin rol';
-        return "Hola, {$this->name} 👋 (Rol: {$rolTexto})";
-    }
 
     public function persona(): BelongsTo
     {
@@ -81,15 +54,13 @@ class User extends Authenticatable
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    // usuario creador / superior (según tu tabla users.user_id)
     public function creador(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(self::class, 'user_id');
     }
 
-    public function creados()
+    public function creados(): HasMany
     {
-        return $this->hasMany(User::class, 'user_id');
+        return $this->hasMany(self::class, 'user_id');
     }
-
 }

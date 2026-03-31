@@ -4,51 +4,63 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Servicio extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'servicios';
 
     protected $fillable = [
-        'empresa_id',
-        'servicio',
-        'ubicacion',
-        'fecha_inicio',
-        'fecha_fin',
+        'descripcion',
         'estado',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     protected $casts = [
-        'empresa_id'   => 'integer',
-        'fecha_inicio' => 'date',
-        'fecha_fin'    => 'date',
-        'estado'       => 'integer',
-        'user_id'      => 'integer',
+        'estado' => 'boolean',
+        'created_by' => 'integer',
+        'updated_by' => 'integer',
+        'deleted_by' => 'integer',
     ];
 
-    public function empresa()
+    public function empresas(): BelongsToMany
     {
-        return $this->belongsTo(Empresa::class, 'empresa_id');
+        return $this->belongsToMany(Empresa::class, 'empresa_servicios', 'servicio_id', 'empresa_id')
+            ->using(EmpresaServicio::class);
     }
 
-    public function user()
+    public function empresaEquipos(): HasMany
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->hasMany(EmpresaEquipo::class, 'servicio_id');
     }
 
-    public function inspecciones()
+    public function equipos(): BelongsToMany
     {
-        return $this->hasMany(Inspeccion::class, 'servicio_id');
-    }
-
-    // Muchos a muchos: servicios <-> equipos
-    public function equipos()
-    {
-        return $this->belongsToMany(Equipo::class, 'equipo_servicio', 'servicio_id', 'equipo_id')
-            ->withPivot(['id', 'estado', 'user_id'])
+        return $this->belongsToMany(Equipo::class, 'empresa_equipos', 'servicio_id', 'equipo_id')
+            ->withPivot(['id', 'empresa_id', 'descripcion', 'serie_tipo', 'serie_codigo', 'estado'])
             ->withTimestamps();
+    }
+
+    public function creadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function actualizadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function eliminadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 }

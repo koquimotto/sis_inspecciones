@@ -26,16 +26,16 @@
                         <ul class="main-menu">
                             <!-- Start::slide -->
                             <li class="slide__category"><span class="category-name">Dashboard</span></li>
-                            
+
                             <li class="slide">
                                 <a href="{{ route('dashboard') }}" class="side-menu__item">
                                     <i class="bx bx-home side-menu__icon"></i>
                                     <span class="side-menu__label">Resumen</span>
                                 </a>
                             </li>
-                            
+
                             <li class="slide__category"><span class="category-name">Operación</span></li>
-                            
+
                             <li class="slide">
                                 <a href="{{ route('inspecciones.index') }}" class="side-menu__item">
                                     <i class="bx bx-task side-menu__icon"></i>
@@ -54,34 +54,34 @@
                                     <span class="side-menu__label">Certificados</span>
                                 </a>
                             </li>
-                            
+
                             <li class="slide__category"><span class="category-name">Equipos</span></li>
-                            
+
                             <li class="slide">
                                 <a href="{{ route('equipos.index') }}" class="side-menu__item">
                                     <i class="bx bx-rocket side-menu__icon"></i>
                                     <span class="side-menu__label">Equipos</span>
                                 </a>
                             </li>
-                            
+
                             <li class="slide__category"><span class="category-name">Empresas</span></li>
-                            
+
                             <li class="slide">
                                 <a href="{{ route('empresas.index') }}" class="side-menu__item">
                                     <i class="bx bx-directions side-menu__icon"></i>
                                     <span class="side-menu__label">Empresas</span>
                                 </a>
                             </li>
-                            
+
                             <li class="slide">
                                 <a href="{{ route('servicios.index') }}" class="side-menu__item">
                                     <i class="bx bx-box side-menu__icon"></i>
                                     <span class="side-menu__label">Servicios</span>
                                 </a>
                             </li>
-                            
+
                             <li class="slide__category"><span class="category-name">Administración</span></li>
-                            
+
                             <li class="slide has-sub">
                                 <a href="javascript:void(0);" class="side-menu__item">
                                     <i class="bx bx-fingerprint side-menu__icon"></i>
@@ -97,7 +97,7 @@
                                     </li>
                                 </ul>
                             </li>
-                            
+
                             <li class="slide has-sub">
                                 <a href="javascript:void(0);" class="side-menu__item">
                                     <i class="bx bx-layer side-menu__icon"></i>
@@ -109,10 +109,19 @@
                                         <a href="javascript:void(0)">Catálogos</a>
                                     </li>
                                     <li class="slide">
+                                        <a href="{{ route('tipos.index') }}" class="side-menu__item">Tipos</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="{{ route('categorias.index') }}" class="side-menu__item">Categorias</a>
+                                    </li>
+                                    <li class="slide">
                                         <a href="{{ route('marcas.index') }}" class="side-menu__item">Marcas</a>
                                     </li>
                                     <li class="slide">
                                         <a href="{{ route('modelos.index') }}" class="side-menu__item">Modelos</a>
+                                    </li>
+                                    <li class="slide">
+                                        <a href="{{ route('inspecciones.catalogos') }}" class="side-menu__item">Inspección</a>
                                     </li>
                                 </ul>
                             </li>

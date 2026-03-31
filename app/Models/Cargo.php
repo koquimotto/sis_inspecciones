@@ -12,6 +12,7 @@ class Cargo extends Model
     protected $table = 'cargos';
 
     protected $fillable = [
+        'codigo',
         'cargo',
         'estado',
     ];

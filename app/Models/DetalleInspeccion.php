@@ -4,35 +4,69 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DetalleInspeccion extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'detalle_inspeccion';
 
     protected $fillable = [
-        'observacion_id',
-        'revision_id',
-        'detalle',
+        'inspeccion_id',
+        'inespeccion_numero',
+        'inspeccion_estado',
+        'inspeccion_fecha',
+        'correcion_vigencia_fecha',
         'severidad',
+        'inspeccion_observaciones',
         'estado',
-        'user_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     protected $casts = [
-        'observacion_id' => 'integer',
-        'revision_id'    => 'integer',
-        'user_id'        => 'integer',
+        'inspeccion_id' => 'integer',
+        'inespeccion_numero' => 'integer',
+        'inspeccion_fecha' => 'datetime',
+        'correcion_vigencia_fecha' => 'date',
+        'estado' => 'boolean',
+        'created_by' => 'integer',
+        'updated_by' => 'integer',
+        'deleted_by' => 'integer',
     ];
 
-    public function observacion()
+    public function inspeccion(): BelongsTo
     {
-        return $this->belongsTo(Observacion::class, 'observacion_id');
+        return $this->belongsTo(Inspeccion::class, 'inspeccion_id');
     }
 
-    public function user()
+    public function certificados(): HasMany
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->hasMany(Certificado::class, 'detalle_inspeccion_id');
+    }
+
+    public function cuestionarioRespuestas(): HasMany
+    {
+        return $this->hasMany(CuestionarioRespuesta::class, 'detalle_inspeccion_id');
+    }
+
+    public function creadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function actualizadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function eliminadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 }
