@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `cargos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Volcando datos para la tabla inspecciones.cargos: ~47 rows (aproximadamente)
+DELETE FROM `cargos`;
 INSERT INTO `cargos` (`id`, `codigo`, `cargo`, `estado`, `created_at`, `updated_at`) VALUES
 	(1, 'ADM', 'Administrador', 1, '2026-03-05 10:00:26', '2026-03-05 10:00:26'),
 	(2, 'DIR', 'Director', 1, '2026-03-05 10:00:26', '2026-03-05 10:00:26'),
@@ -99,9 +100,10 @@ CREATE TABLE IF NOT EXISTS `categorias` (
   KEY `categorias_codigo_index` (`codigo`) USING BTREE,
   KEY `categorias_categoria_index` (`categoria`) USING BTREE,
   KEY `categorias_estado_index` (`estado`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.categorias: ~53 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.categorias: ~54 rows (aproximadamente)
+DELETE FROM `categorias`;
 INSERT INTO `categorias` (`id`, `codigo`, `categoria`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 'VEH-PIC', 'Vehículo - Pickup', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
 	(2, 'VEH-SUV', 'Vehículo - SUV', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
@@ -155,7 +157,8 @@ INSERT INTO `categorias` (`id`, `codigo`, `categoria`, `estado`, `created_at`, `
 	(50, 'REP-ELC', 'Repuesto - Eléctrico', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
 	(51, 'REP-FIL', 'Repuesto - Filtros', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
 	(52, 'REP-NEU', 'Repuesto - Neumáticos / Llantas', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
-	(53, 'REP-BAT', 'Repuesto - Baterías', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL);
+	(53, 'REP-BAT', 'Repuesto - Baterías', b'1', '2026-03-05 09:59:54', '2026-03-05 09:59:54', NULL, NULL, NULL, NULL),
+	(54, NULL, 'Deportivo', b'1', '2026-03-31 10:35:55', '2026-03-31 10:35:55', NULL, 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.certificados
 CREATE TABLE IF NOT EXISTS `certificados` (
@@ -185,6 +188,7 @@ CREATE TABLE IF NOT EXISTS `certificados` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.certificados: ~0 rows (aproximadamente)
+DELETE FROM `certificados`;
 
 -- Volcando estructura para tabla inspecciones.cuestionario_categorias
 CREATE TABLE IF NOT EXISTS `cuestionario_categorias` (
@@ -198,9 +202,15 @@ CREATE TABLE IF NOT EXISTS `cuestionario_categorias` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.cuestionario_categorias: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.cuestionario_categorias: ~4 rows (aproximadamente)
+DELETE FROM `cuestionario_categorias`;
+INSERT INTO `cuestionario_categorias` (`id`, `descripcion`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 'DATOS GENERALES DEL EQUIPO', b'1', '2026-03-31 15:37:29', '2026-03-31 15:37:29', NULL, NULL, NULL, NULL),
+	(2, 'SEGURIDAD Y OTROS', b'1', '2026-03-31 15:37:29', '2026-03-31 15:37:29', NULL, NULL, NULL, NULL),
+	(3, 'INSPECCION DEL EQUIPO', b'1', '2026-03-31 15:37:29', '2026-03-31 15:37:29', NULL, NULL, NULL, NULL),
+	(4, 'DOCUMENTACION', b'1', '2026-03-31 15:37:29', '2026-03-31 15:37:29', NULL, NULL, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.cuestionario_preguntas
 CREATE TABLE IF NOT EXISTS `cuestionario_preguntas` (
@@ -211,12 +221,14 @@ CREATE TABLE IF NOT EXISTS `cuestionario_preguntas` (
   `equipo_categoria_ids` varchar(255) DEFAULT NULL,
   `equipo_marca_ids` varchar(255) DEFAULT NULL,
   `equipo_modelo_ids` varchar(255) DEFAULT NULL,
+  `pregunta_numero_orden` int(11) DEFAULT NULL,
+  `pregunta_visualizacion` enum('ingreso_salida','valor_unico') DEFAULT NULL,
   `pregunta_enunciado` varchar(255) NOT NULL,
   `ingeso_preguntar` tinyint(1) DEFAULT NULL,
-  `ingreso_respuesta_tipo` enum('select','radio','entero','decimal','texto') DEFAULT NULL,
+  `ingreso_respuesta_tipo` enum('select','radio','entero','decimal','texto','') DEFAULT NULL,
   `ingreso_respuesta_valores` varchar(255) DEFAULT NULL,
   `salida_preguntar` tinyint(1) DEFAULT NULL,
-  `salida_respuesta_tipo` enum('select','radio','entero','decimal','texto') DEFAULT NULL,
+  `salida_respuesta_tipo` enum('select','radio','entero','decimal','texto','') DEFAULT NULL,
   `salida_respuesta_valores` varchar(255) DEFAULT NULL,
   `permitir_observaciones` tinyint(1) DEFAULT NULL,
   `estado` bit(1) DEFAULT b'1',
@@ -227,9 +239,150 @@ CREATE TABLE IF NOT EXISTS `cuestionario_preguntas` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=150 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.cuestionario_preguntas: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.cuestionario_preguntas: ~149 rows (aproximadamente)
+DELETE FROM `cuestionario_preguntas`;
+INSERT INTO `cuestionario_preguntas` (`id`, `cuestionario_categoria_id`, `cuestionario_sub_categoria_id`, `equipo_tipo_ids`, `equipo_categoria_ids`, `equipo_marca_ids`, `equipo_modelo_ids`, `pregunta_numero_orden`, `pregunta_visualizacion`, `pregunta_enunciado`, `ingeso_preguntar`, `ingreso_respuesta_tipo`, `ingreso_respuesta_valores`, `salida_preguntar`, `salida_respuesta_tipo`, `salida_respuesta_valores`, `permitir_observaciones`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(8, 1, 1, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Horómetro / Kilometraje actual', 1, 'radio', NULL, 1, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(9, 1, 1, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Nivel de combustible en el tanque', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(10, 1, 1, '.2.', NULL, NULL, NULL, 10, 'valor_unico', 'Fecha de ultimo mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(11, 1, 1, '.2.', NULL, NULL, NULL, 11, 'valor_unico', 'Tipo de mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(15, 1, 1, '.2.', NULL, NULL, NULL, 15, 'valor_unico', 'SOAT / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(16, 1, 1, '.2.', NULL, NULL, NULL, 16, 'valor_unico', 'Seguro contra todo riesgo / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(17, 2, 2, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'ROPS (Roller Over Protection System) Sistema protector contra volcaduras', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(18, 2, 2, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Faros neblineros (02) (opcional)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(19, 2, 2, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Porta tacos (lado izquierdo)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(20, 2, 2, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Tacos para llantas (02)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(21, 2, 2, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Faros piratas (02)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(22, 2, 2, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Certificado de opacidad', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(23, 2, 2, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Bandeja contra derrames', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(24, 2, 2, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Kit anti derrames', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(25, 2, 2, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Conos color naranja con cinta reflectiva (02)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(26, 2, 2, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Cinturones de seguridad en buen estado / cantidad', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(27, 2, 2, '.2.', NULL, NULL, NULL, 11, 'ingreso_salida', 'Soporte de extintor que permita un retiro rapido y facil acceso', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(28, 2, 2, '.2.', NULL, NULL, NULL, 12, 'ingreso_salida', 'Extintor, carga y en buenas condiciones (fecha de vencimiento)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(29, 2, 2, '.2.', NULL, NULL, NULL, 13, 'ingreso_salida', 'Botiquin de primeros auxilios', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(30, 2, 2, '.2.', NULL, NULL, NULL, 14, 'ingreso_salida', 'Alarma de retroceso con 10 metros de radio de audicion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(31, 2, 2, '.2.', NULL, NULL, NULL, 15, 'ingreso_salida', 'Baliza (ambar)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(32, 2, 2, '.2.', NULL, NULL, NULL, 16, 'ingreso_salida', 'Radio base', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(33, 3, 3, '.2.', NULL, NULL, NULL, 1, 'valor_unico', 'Modelo de Motor', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(34, 3, 3, '.2.', NULL, NULL, NULL, 2, 'valor_unico', 'No de Serie del Motor', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(35, 3, 3, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Funcionamiento del motor', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(36, 3, 3, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Inspeccion de fugas por ventilador', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(37, 3, 3, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Inspeccion de fugas por arrancador(es)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(38, 3, 3, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Inspeccion de fugas por bomba de agua', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(39, 3, 3, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Inspeccion de fugas por enfriadores hidraulicos', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(40, 3, 3, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Inspeccion de fugas por bomba de combustible', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(41, 3, 3, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Inspeccion de fugas por riel comun / canerias de combustible', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(42, 3, 3, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Inspeccion de fugas por compresor de A/C', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(43, 3, 3, '.2.', NULL, NULL, NULL, 11, 'ingreso_salida', 'Inspeccion de fugas por carter', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(44, 3, 3, '.2.', NULL, NULL, NULL, 12, 'ingreso_salida', 'Inspeccion de fugas por tapa de balancines', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(45, 3, 3, '.2.', NULL, NULL, NULL, 13, 'ingreso_salida', 'Inspeccion de fugas por radiador', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(46, 3, 3, '.2.', NULL, NULL, NULL, 14, 'ingreso_salida', 'Inspeccion de fugas por mangueras de enfriamiento', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(47, 3, 3, '.2.', NULL, NULL, NULL, 15, 'ingreso_salida', 'Inspeccion de fugas por mangueras del sistema de lubricacion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(48, 3, 3, '.2.', NULL, NULL, NULL, 16, 'ingreso_salida', 'Inspeccion de fugas por mangueras de combustible', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(49, 3, 3, '.2.', NULL, NULL, NULL, 17, 'ingreso_salida', 'Inspeccion de soportes de motor', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(50, 3, 3, '.2.', NULL, NULL, NULL, 18, 'ingreso_salida', 'Revision de nivel de aceite de motor', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(51, 3, 3, '.2.', NULL, NULL, NULL, 19, 'ingreso_salida', 'Inspeccion de varilla de nivel de aceite de motor', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(52, 3, 3, '.2.', NULL, NULL, NULL, 20, 'ingreso_salida', 'Revision de nivel de refrigerante', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(53, 3, 3, '.2.', NULL, NULL, NULL, 21, 'ingreso_salida', 'Inspeccion de deposito de expansion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(54, 3, 3, '.2.', NULL, NULL, NULL, 22, 'ingreso_salida', 'Inspeccion de alternador, templador y poleas de alternador', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(55, 3, 3, '.2.', NULL, NULL, NULL, 23, 'ingreso_salida', 'Inspeccion de fugas de gases de escape por sistema', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(56, 3, 3, '.2.', NULL, NULL, NULL, 24, 'ingreso_salida', 'Inspeccion de estado de mangueras del sistema de admision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(57, 3, 3, '.2.', NULL, NULL, NULL, 25, 'ingreso_salida', 'Inspeccion del estado de caja de filtros de aire', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(58, 3, 3, '.2.', NULL, NULL, NULL, 26, 'ingreso_salida', 'Otros', 1, 'radio', NULL, 1, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(59, 3, 4, '.2.', NULL, NULL, NULL, 1, 'valor_unico', 'No de Serie de la Transmision', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(60, 3, 4, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Sonidos anormal en la transmision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(61, 3, 4, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Inspeccion de fugas por la caja de transmision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(62, 3, 4, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Inspeccion de fugas por lineas de transmision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(63, 3, 4, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Evaluacion de ruidos extranos en transmision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(64, 3, 4, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Inspeccion de pedal de embrague', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(65, 3, 4, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Inspeccion de tapones de drenaje de transmision', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(66, 3, 5, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Inspeccion de fugas por diferencial posterior', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(67, 3, 5, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Inspeccion de fugas por reten del diferencial frontal', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(68, 3, 5, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Inspeccion de estado de funda de diferencial (golpes / abolladuras)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(69, 3, 5, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Condicion de los tapones de diferenciales', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(70, 3, 5, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Fuga de aceite por tapones de diferenciales', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(71, 3, 6, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Verificar el nivel de aceite de tanque de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(72, 3, 6, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Verificar la condicion de las mangueras y lineas de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(73, 3, 6, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Verificar juego en la volante de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(74, 3, 6, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Verificar estado de terminales de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(75, 3, 6, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Verificar estado de barras de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(76, 3, 6, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Inspeccion de fugas por caja de direccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(77, 3, 7, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Verificar funcionamiento del freno de servicio', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(78, 3, 7, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Verificar funcionamiento del freno de estacionamiento (freno de mano)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(79, 3, 7, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Verificar estado de manometro indicador de presion de aire', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(80, 3, 7, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Verificar estado de bomba maestra de freno - pulmones', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(81, 3, 7, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Verificar estado de canerias de freno', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(82, 3, 7, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Verificar estado de zapatas de freno', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(83, 3, 7, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Verificar estado de compresora de aire', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(84, 3, 7, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Verificar estado de valvula reguladora de aire', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(85, 3, 7, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Verificar estado de tanque de aire (estado/soportes/# de tanques)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(86, 3, 7, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Verificar estado de pedal de freno', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(87, 3, 7, '.2.', NULL, NULL, NULL, 11, 'ingreso_salida', 'Inspeccion de fugas por lineas de freno', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(88, 3, 8, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Verificar el funcionamiento de luces e indicadores', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(89, 3, 8, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Verificar el funcionamiento del velocimetro / tacometro', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(90, 3, 8, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Verificar el funcionamiento de horometro', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(91, 3, 8, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Verificar el funcionamiento de claxon de aire o electrico', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(92, 3, 8, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Verificar el estado de baterias', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(93, 3, 8, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Verificar el estado de bornes de bateria', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(94, 3, 8, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Verificar el estado de cables de bateria', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(95, 3, 8, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Verificar el estado del cableado del circuito en general', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(96, 3, 8, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Switch de corte de energia', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(97, 3, 8, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Sistema de bloqueo mecanico del switch de corte de energia', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(98, 3, 8, '.2.', NULL, NULL, NULL, 11, 'ingreso_salida', 'Verificar el estado de la alarma de retroceso', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(99, 3, 8, '.2.', NULL, NULL, NULL, 12, 'ingreso_salida', 'Verificar el estado de la chapa de arranque', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(100, 3, 8, '.2.', NULL, NULL, NULL, 13, 'ingreso_salida', 'Verificar el estado de faros delanteros (baja/alta)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(101, 3, 8, '.2.', NULL, NULL, NULL, 14, 'ingreso_salida', 'Verificar el estado de faros direccionales delanteros', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(102, 3, 8, '.2.', NULL, NULL, NULL, 15, 'ingreso_salida', 'Verificar el estado de faros posteriores (freno/direccional/retroceso/estacionamiento)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(103, 3, 9, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Luz de lectura', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(104, 3, 9, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Luz de salon', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(105, 3, 9, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Verificar estado de las lunas de cabina', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(106, 3, 9, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Verificar estado de los espejos retrovisores y central', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(107, 3, 9, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Verificar estado de filtro de cabina', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(108, 3, 9, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Verificar estado de instrumentos e indicadores', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(109, 3, 9, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Verificar estado de auto radio musical', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(110, 3, 9, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Verificar estado de controles de cabina', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(111, 3, 9, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Verificar estado de sistema de A/C y calefaccion', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(112, 3, 9, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Verificar nivel de deposito de limpiaparabrisas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(113, 3, 9, '.2.', NULL, NULL, NULL, 11, 'ingreso_salida', 'Verificar estado de limpia parabrisas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(114, 3, 9, '.2.', NULL, NULL, NULL, 12, 'ingreso_salida', 'Verificar estado de asiento de operador', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(115, 3, 9, '.2.', NULL, NULL, NULL, 13, 'ingreso_salida', 'Verificar estado de asiento de copiloto', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(116, 3, 9, '.2.', NULL, NULL, NULL, 14, 'ingreso_salida', 'Verificar estado de faros de luces de cabina', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(117, 3, 9, '.2.', NULL, NULL, NULL, 15, 'ingreso_salida', 'Verificar mascarilla frontal', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(118, 3, 9, '.2.', NULL, NULL, NULL, 16, 'ingreso_salida', 'Verificar soporte metalico de capot', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(119, 3, 9, '.2.', NULL, NULL, NULL, 17, 'ingreso_salida', 'Verificar jebe de capot', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(120, 3, 9, '.2.', NULL, NULL, NULL, 18, 'ingreso_salida', 'Verificar emblema frontal (marca de vehiculo)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(121, 3, 9, '.2.', NULL, NULL, NULL, 19, 'ingreso_salida', 'Verificar estado de coderas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(122, 3, 9, '.2.', NULL, NULL, NULL, 20, 'ingreso_salida', 'Verificar estado de correas de seguridad', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(123, 3, 9, '.2.', NULL, NULL, NULL, 21, 'ingreso_salida', 'Verificar estado de pisos de jebe', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(124, 3, 9, '.2.', NULL, NULL, NULL, 22, 'ingreso_salida', 'Verificar estado de puertas c/lunas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(125, 3, 9, '.2.', NULL, NULL, NULL, 23, 'ingreso_salida', 'Verificar estado de chapas de puerta', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(126, 3, 9, '.2.', NULL, NULL, NULL, 24, 'ingreso_salida', 'Verificar deflector de aire', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(127, 3, 9, '.2.', NULL, NULL, NULL, 25, 'ingreso_salida', 'Verificar estado de bisagras de puertas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(128, 3, 9, '.2.', NULL, NULL, NULL, 26, 'ingreso_salida', 'Verificar estado de gomas de puertas', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(129, 3, 9, '.2.', NULL, NULL, NULL, 27, 'ingreso_salida', 'Verificar tope de puerta (tope al abrir puerta)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(130, 3, 9, '.2.', NULL, NULL, NULL, 28, 'ingreso_salida', 'Verificar estado de tapa sol', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(131, 3, 9, '.2.', NULL, NULL, NULL, 29, 'ingreso_salida', 'Verificar estado de capot', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(132, 3, 10, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Verificar estado de chasis principal', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(133, 3, 10, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Verificar estado de barra estabilizadora', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(134, 3, 10, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Verificar estado de muelles delanteros', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(135, 3, 10, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Verificar estado de muelles posteriores', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(136, 3, 10, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Verificar estado de amortiguadores delanteros', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(137, 3, 10, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Verificar estado de amortiguadores posteriores', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(138, 3, 10, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Verificar estado de guardafangos delanteros', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(139, 3, 10, '.2.', NULL, NULL, NULL, 8, 'ingreso_salida', 'Verificar estado de pintura', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(140, 3, 10, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Verificar estado de guardafangos posteriores', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(141, 3, 10, '.2.', NULL, NULL, NULL, 10, 'ingreso_salida', 'Verificar estado de para choque delantero', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(142, 3, 10, '.2.', '.16.', NULL, NULL, 11, 'ingreso_salida', 'Verificar estado de para choque posterior', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 20:49:28', NULL, NULL, NULL, NULL),
+	(143, 4, 11, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'Copia del manual de partes', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(144, 4, 11, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Copia de manual de operacion', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(145, 4, 11, '.2.', NULL, NULL, NULL, 3, 'ingreso_salida', 'Informe de mantenimientos anteriores', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(146, 4, 11, '.2.', NULL, NULL, NULL, 4, 'ingreso_salida', 'Informe de evaluacion integral de sistemas', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(147, 4, 11, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Datos de neumaticos', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(148, 4, 11, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Tabla de cargas de pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
+	(149, 4, 11, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Certificado de operatividad de la pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 21:28:06', NULL, NULL, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.cuestionario_respuestas
 CREATE TABLE IF NOT EXISTS `cuestionario_respuestas` (
@@ -251,9 +404,8 @@ CREATE TABLE IF NOT EXISTS `cuestionario_respuestas` (
   `updated_by` bigint(20) DEFAULT NULL,
   `deleted_by` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=149 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.cuestionario_respuestas: ~0 rows (aproximadamente)
 
 -- Volcando estructura para tabla inspecciones.cuestionario_respuestas_observaciones
 CREATE TABLE IF NOT EXISTS `cuestionario_respuestas_observaciones` (
@@ -261,7 +413,8 @@ CREATE TABLE IF NOT EXISTS `cuestionario_respuestas_observaciones` (
   `cuestionario_respuesta_id` bigint(20) unsigned NOT NULL,
   `inspeccion_archivo_equipo_id` bigint(20) unsigned DEFAULT NULL,
   `descripcion` varchar(255) NOT NULL,
-  `tipo_observacion` varchar(20) DEFAULT NULL,
+  `momento` enum('ingreso','salida','ambos') DEFAULT NULL,
+  `severidad` enum('baja','media','alta') DEFAULT NULL,
   `estado` bit(1) DEFAULT b'1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -273,6 +426,7 @@ CREATE TABLE IF NOT EXISTS `cuestionario_respuestas_observaciones` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Volcando datos para la tabla inspecciones.cuestionario_respuestas_observaciones: ~0 rows (aproximadamente)
+DELETE FROM `cuestionario_respuestas_observaciones`;
 
 -- Volcando estructura para tabla inspecciones.cuestionario_sub_categorias
 CREATE TABLE IF NOT EXISTS `cuestionario_sub_categorias` (
@@ -286,9 +440,22 @@ CREATE TABLE IF NOT EXISTS `cuestionario_sub_categorias` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.cuestionario_sub_categorias: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.cuestionario_sub_categorias: ~11 rows (aproximadamente)
+DELETE FROM `cuestionario_sub_categorias`;
+INSERT INTO `cuestionario_sub_categorias` (`id`, `descripcion`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 'DETALLES DEL EQUIPO', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(2, 'INSUMOS DE SEGURIDAD', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(3, 'MOTOR', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(4, 'TRANSMISION', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(5, 'CORONA', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(6, 'SISTEMA DE DIRECCION', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(7, 'SISTEMA DE FRENO', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(8, 'SISTEMA ELECTRICO', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(9, 'CABINA', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(10, 'CHASIS / SUSPENSION', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL),
+	(11, 'DOCUMENTOS ENTREGADOS POR EL PROVEEDOR', b'1', '2026-03-31 15:38:24', '2026-03-31 15:38:24', NULL, NULL, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.detalle_inspeccion
 CREATE TABLE IF NOT EXISTS `detalle_inspeccion` (
@@ -310,9 +477,16 @@ CREATE TABLE IF NOT EXISTS `detalle_inspeccion` (
   PRIMARY KEY (`id`) USING BTREE,
   KEY `detalle_inspeccion_severidad_index` (`severidad`) USING BTREE,
   KEY `detalle_inspeccion_estado_index` (`estado`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.detalle_inspeccion: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.detalle_inspeccion: ~5 rows (aproximadamente)
+DELETE FROM `detalle_inspeccion`;
+INSERT INTO `detalle_inspeccion` (`id`, `inspeccion_id`, `inespeccion_numero`, `inspeccion_estado`, `inspeccion_fecha`, `correcion_vigencia_fecha`, `severidad`, `inspeccion_observaciones`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 1, 1, 'en_inspeccion', '2026-03-31 05:44:56', NULL, 'media', NULL, b'1', '2026-03-31 10:44:56', '2026-03-31 10:44:56', NULL, 1, 1, NULL),
+	(2, 1, 1, 'en_inspeccion', '2026-03-31 15:45:36', NULL, 'media', NULL, b'1', '2026-03-31 20:45:36', '2026-03-31 20:45:36', NULL, 1, 1, NULL),
+	(3, 1, 1, 'en_inspeccion', '2026-03-31 16:11:13', NULL, 'media', NULL, b'1', '2026-03-31 21:11:13', '2026-03-31 21:11:13', NULL, 1, 1, NULL),
+	(4, 1, 1, 'en_inspeccion', '2026-03-31 16:30:14', NULL, 'media', NULL, b'1', '2026-03-31 21:30:14', '2026-03-31 21:30:14', NULL, 1, 1, NULL),
+	(5, 1, 1, 'en_inspeccion', '2026-04-01 00:18:56', NULL, 'media', NULL, b'1', '2026-04-01 05:18:56', '2026-04-01 05:18:56', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.empresa_contacto
 CREATE TABLE IF NOT EXISTS `empresa_contacto` (
@@ -333,9 +507,14 @@ CREATE TABLE IF NOT EXISTS `empresa_contacto` (
   KEY `empresa_contacto_persona_id_index` (`persona_id`) USING BTREE,
   KEY `empresa_contacto_empresa_id_index` (`empresa_id`) USING BTREE,
   KEY `empresa_contacto_estado_index` (`estado`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.empresa_contacto: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.empresa_contacto: ~3 rows (aproximadamente)
+DELETE FROM `empresa_contacto`;
+INSERT INTO `empresa_contacto` (`id`, `persona_id`, `empresa_id`, `email`, `telefono`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 6, 3, NULL, NULL, b'1', '2026-03-31 10:00:53', '2026-03-31 10:00:53', NULL, 1, NULL, NULL),
+	(2, 7, 3, 'juanp69@gmail.com', '976001682', b'0', '2026-03-31 10:00:53', '2026-03-31 10:00:53', NULL, 1, NULL, NULL),
+	(3, 1, 4, 'admin@sis-cursos.test', NULL, b'1', '2026-03-31 21:08:58', '2026-03-31 21:09:13', '2026-03-31 21:09:13', 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.empresa_equipos
 CREATE TABLE IF NOT EXISTS `empresa_equipos` (
@@ -354,9 +533,15 @@ CREATE TABLE IF NOT EXISTS `empresa_equipos` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.empresa_equipos: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.empresa_equipos: ~4 rows (aproximadamente)
+DELETE FROM `empresa_equipos`;
+INSERT INTO `empresa_equipos` (`id`, `empresa_id`, `equipo_id`, `servicio_id`, `descripcion`, `serie_tipo`, `serie_codigo`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 3, 1, 1, 'Vehiculo - Vehículo - SUV - Hyundai - Tucson - Moises Gutierrez Terrones', 'placa', 'AVV-196', b'1', '2026-03-31 10:26:56', '2026-03-31 10:26:56', NULL, 1, 1, NULL),
+	(2, 3, 1, 1, 'Vehiculo - Vehículo - SUV - Hyundai - Tucson - 2009 - Moises Gutierrez Terrones', 'placa', 'XXX-069', b'1', '2026-03-31 10:30:50', '2026-03-31 10:30:50', NULL, 1, 1, NULL),
+	(3, 3, 2, 1, 'Vehiculo - Deportivo - Mazda1 - Runner XB - 2020 - Moises Gutierrez Terrones', 'placa', 'BAX-001', b'1', '2026-03-31 10:36:21', '2026-03-31 10:36:21', NULL, 1, 1, NULL),
+	(4, 4, 1, NULL, 'Vehiculo - Vehículo - SUV - Hyundai - Tucson - 2009 - LUCHO GRILL', 'placa', 'XXX-069', b'1', '2026-03-31 21:10:47', '2026-03-31 21:10:47', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.empresa_equipos_historico
 CREATE TABLE IF NOT EXISTS `empresa_equipos_historico` (
@@ -375,6 +560,7 @@ CREATE TABLE IF NOT EXISTS `empresa_equipos_historico` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Volcando datos para la tabla inspecciones.empresa_equipos_historico: ~0 rows (aproximadamente)
+DELETE FROM `empresa_equipos_historico`;
 
 -- Volcando estructura para tabla inspecciones.empresa_servicios
 CREATE TABLE IF NOT EXISTS `empresa_servicios` (
@@ -382,7 +568,13 @@ CREATE TABLE IF NOT EXISTS `empresa_servicios` (
   `servicio_id` bigint(20) unsigned NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.empresa_servicios: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.empresa_servicios: ~4 rows (aproximadamente)
+DELETE FROM `empresa_servicios`;
+INSERT INTO `empresa_servicios` (`empresa_id`, `servicio_id`) VALUES
+	(3, 1),
+	(4, 1),
+	(4, 2),
+	(4, 4);
 
 -- Volcando estructura para tabla inspecciones.empresa_servicios_historico
 CREATE TABLE IF NOT EXISTS `empresa_servicios_historico` (
@@ -397,6 +589,7 @@ CREATE TABLE IF NOT EXISTS `empresa_servicios_historico` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Volcando datos para la tabla inspecciones.empresa_servicios_historico: ~0 rows (aproximadamente)
+DELETE FROM `empresa_servicios_historico`;
 
 -- Volcando estructura para tabla inspecciones.empresas
 CREATE TABLE IF NOT EXISTS `empresas` (
@@ -425,12 +618,15 @@ CREATE TABLE IF NOT EXISTS `empresas` (
   KEY `empresas_tipo_index` (`tipo`) USING BTREE,
   KEY `empresas_ruc_index` (`ruc`) USING BTREE,
   KEY `empresas_estado_index` (`estado`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.empresas: ~2 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.empresas: ~4 rows (aproximadamente)
+DELETE FROM `empresas`;
 INSERT INTO `empresas` (`id`, `tipo`, `unidad_minera_id`, `ruc`, `razon_social`, `nombre_comercial`, `email`, `telefono`, `pais_id`, `region_id`, `ciudad`, `direccion`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 'unidad_minera', NULL, '20123456789', 'UNIDAD MINERA DEMO S.A.C.', 'UM DEMO', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-05 09:55:25', '2026-03-05 09:55:25', NULL, NULL, NULL, NULL),
-	(2, 'empresa', 1, '20654321098', 'SERVICE DEMO S.R.L.', 'SERVICE DEMO', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-05 09:55:25', '2026-03-05 09:55:25', NULL, NULL, NULL, NULL);
+	(2, 'empresa', 1, '20654321098', 'SERVICE DEMO S.R.L.', 'SERVICE DEMO', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-05 09:55:25', '2026-03-05 09:55:25', NULL, NULL, NULL, NULL),
+	(3, 'empresa', NULL, '10732085157', 'Moises Gutierrez Terrones', 'Moises Gutierrez Terrones', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-31 09:25:32', '2026-03-31 10:00:53', NULL, 1, 1, NULL),
+	(4, 'empresa', NULL, '10704957608', 'LUCHO VIP', 'LUCHO GRILL', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-31 21:07:04', '2026-03-31 21:09:26', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.equipos
 CREATE TABLE IF NOT EXISTS `equipos` (
@@ -450,9 +646,13 @@ CREATE TABLE IF NOT EXISTS `equipos` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.equipos: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.equipos: ~2 rows (aproximadamente)
+DELETE FROM `equipos`;
+INSERT INTO `equipos` (`id`, `tipo_id`, `categoria_id`, `marca_id`, `modelo_id`, `descripcion`, `anio`, `observaciones`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 2, 2, 2, 64, 'Vehiculo - Vehículo - SUV - Hyundai - Tucson - 2009', '2009', NULL, b'1', '2026-03-31 10:26:56', '2026-03-31 10:26:56', NULL, 1, 1, NULL),
+	(2, 2, 54, 91, 65, 'Vehiculo - Deportivo - Mazda1 - Runner XB - 2020', '2020', NULL, b'1', '2026-03-31 10:36:21', '2026-03-31 10:36:21', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.failed_jobs
 CREATE TABLE IF NOT EXISTS `failed_jobs` (
@@ -468,6 +668,7 @@ CREATE TABLE IF NOT EXISTS `failed_jobs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.failed_jobs: ~0 rows (aproximadamente)
+DELETE FROM `failed_jobs`;
 
 -- Volcando estructura para tabla inspecciones.inspeccion_archivos_equipo
 CREATE TABLE IF NOT EXISTS `inspeccion_archivos_equipo` (
@@ -487,23 +688,26 @@ CREATE TABLE IF NOT EXISTS `inspeccion_archivos_equipo` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.inspeccion_archivos_equipo: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.inspeccion_archivos_equipo: ~1 rows (aproximadamente)
+DELETE FROM `inspeccion_archivos_equipo`;
+INSERT INTO `inspeccion_archivos_equipo` (`id`, `inspeccion_id`, `archivo_descripcion`, `archivo_autogenerado`, `archivo_tipo`, `archivo_ruta`, `archivo_origen`, `mostrar_certificado`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 1, 'modificacion carnet vacucnacionaaa', b'0', 'imagen', 'uploads/inspecciones/26-0001-XXX-069/1/20260331164340_h5Mnow6SVc.png', 'original', b'1', b'1', '2026-03-31 21:43:40', '2026-03-31 21:43:40', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.inspecciones
 CREATE TABLE IF NOT EXISTS `inspecciones` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `anio` int(10) NOT NULL,
-  `correlativo` int(10) NOT NULL,
-  `codigo` varchar(30) DEFAULT NULL,
+  `anio` int(11) NOT NULL,
+  `correlativo` int(11) DEFAULT NULL,
+  `codigo` varchar(30) NOT NULL,
   `tipo_inspeccion_id` bigint(20) unsigned DEFAULT NULL,
   `empresa_equipo_id` bigint(20) unsigned DEFAULT NULL,
   `fecha_ingreso` date DEFAULT NULL,
   `fecha_salida` date DEFAULT NULL,
   `estado_inspeccion` enum('borrador','en_inspeccion','observado','subsanacion','aprobado','rechazado','anulado') NOT NULL DEFAULT 'borrador',
   `observaciones` text DEFAULT NULL,
-  `certificado_generado` bit(1) default null,
+  `certificado_generado` bit(1) DEFAULT b'0',
   `estado` bit(1) DEFAULT b'1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -512,9 +716,12 @@ CREATE TABLE IF NOT EXISTS `inspecciones` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.inspecciones: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.inspecciones: ~1 rows (aproximadamente)
+DELETE FROM `inspecciones`;
+INSERT INTO `inspecciones` (`id`, `anio`, `correlativo`, `codigo`, `tipo_inspeccion_id`, `empresa_equipo_id`, `fecha_ingreso`, `fecha_salida`, `estado_inspeccion`, `observaciones`, `certificado_generado`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 2026, 1, '26-0001', NULL, 4, '2026-04-01', NULL, 'en_inspeccion', NULL, b'0', b'1', '2026-04-01 05:18:56', '2026-04-01 05:18:56', NULL, 1, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.marcas
 CREATE TABLE IF NOT EXISTS `marcas` (
@@ -531,9 +738,10 @@ CREATE TABLE IF NOT EXISTS `marcas` (
   PRIMARY KEY (`id`) USING BTREE,
   KEY `marcas_codigo_index` (`codigo`) USING BTREE,
   KEY `marcas_marca_index` (`marca`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=91 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=92 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.marcas: ~90 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.marcas: ~91 rows (aproximadamente)
+DELETE FROM `marcas`;
 INSERT INTO `marcas` (`id`, `codigo`, `marca`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 'TOY', 'Toyota', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
 	(2, 'HYU', 'Hyundai', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
@@ -624,7 +832,8 @@ INSERT INTO `marcas` (`id`, `codigo`, `marca`, `estado`, `created_at`, `updated_
 	(87, 'GEN', 'Generac', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
 	(88, 'CUM', 'Cummins', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
 	(89, 'PERK', 'Perkins', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
-	(90, 'DEU', 'DEUTZ', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL);
+	(90, 'DEU', 'DEUTZ', b'1', '2026-03-05 09:58:17', '2026-03-05 09:58:17', NULL, NULL, NULL, NULL),
+	(91, NULL, 'Mazda1', b'1', '2026-03-31 10:36:01', '2026-03-31 10:36:01', NULL, 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.migrations
 CREATE TABLE IF NOT EXISTS `migrations` (
@@ -635,6 +844,7 @@ CREATE TABLE IF NOT EXISTS `migrations` (
 ) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.migrations: ~28 rows (aproximadamente)
+DELETE FROM `migrations`;
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '2013_03_04_041648_create_paises_table', 1),
 	(2, '2013_03_04_041724_create_marcas_table', 1),
@@ -680,9 +890,10 @@ CREATE TABLE IF NOT EXISTS `modelos` (
   PRIMARY KEY (`id`) USING BTREE,
   KEY `modelos_modelos_index` (`modelos`) USING BTREE,
   KEY `modelos_modelo_index` (`modelo`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=64 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=66 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.modelos: ~63 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.modelos: ~65 rows (aproximadamente)
+DELETE FROM `modelos`;
 INSERT INTO `modelos` (`id`, `modelos`, `modelo`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 'HILUX', 'Hilux', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
 	(2, 'RAV4', 'RAV4', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
@@ -746,7 +957,9 @@ INSERT INTO `modelos` (`id`, `modelos`, `modelo`, `estado`, `created_at`, `updat
 	(60, 'H25FT', 'Montacargas H2.5FT', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
 	(61, 'H30FT', 'Montacargas H3.0FT', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
 	(62, 'GDP25VX', 'Montacargas GDP25VX', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
-	(63, 'GDP30VX', 'Montacargas GDP30VX', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL);
+	(63, 'GDP30VX', 'Montacargas GDP30VX', b'1', '2026-03-05 09:59:15', '2026-03-05 09:59:15', NULL, NULL, NULL, NULL),
+	(64, 'TUCSON', 'Tucson', b'1', '2026-03-31 10:26:26', '2026-03-31 10:26:26', NULL, 1, NULL, NULL),
+	(65, 'RUNNER XB', 'Runner XB', b'1', '2026-03-31 10:36:09', '2026-03-31 10:36:09', NULL, 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.paises
 CREATE TABLE IF NOT EXISTS `paises` (
@@ -770,6 +983,7 @@ CREATE TABLE IF NOT EXISTS `paises` (
 ) ENGINE=InnoDB AUTO_INCREMENT=249 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.paises: ~248 rows (aproximadamente)
+DELETE FROM `paises`;
 INSERT INTO `paises` (`id`, `pais`, `codigo`, `flag`, `iso3`, `iso_num`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 'Afganistán', 'AF', NULL, 'AFG', '004', b'1', '2026-03-05 09:55:35', '2026-03-05 09:55:35', NULL, NULL, NULL, NULL),
 	(2, 'Åland', 'AX', NULL, 'ALA', '248', b'1', '2026-03-05 09:55:35', '2026-03-05 09:55:35', NULL, NULL, NULL, NULL),
@@ -1029,6 +1243,7 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.password_reset_tokens: ~0 rows (aproximadamente)
+DELETE FROM `password_reset_tokens`;
 
 -- Volcando estructura para tabla inspecciones.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
@@ -1048,6 +1263,7 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.personal_access_tokens: ~0 rows (aproximadamente)
+DELETE FROM `personal_access_tokens`;
 
 -- Volcando estructura para tabla inspecciones.personas
 CREATE TABLE IF NOT EXISTS `personas` (
@@ -1074,15 +1290,18 @@ CREATE TABLE IF NOT EXISTS `personas` (
   UNIQUE KEY `personas_numero_documento_unique` (`numero_documento`) USING BTREE,
   UNIQUE KEY `personas_email_unique` (`email`) USING BTREE,
   KEY `personas_apellido_paterno_apellido_materno_nombres_index` (`apellido_paterno`,`apellido_materno`,`nombres`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.personas: ~5 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.personas: ~7 rows (aproximadamente)
+DELETE FROM `personas`;
 INSERT INTO `personas` (`id`, `tipo_documento`, `numero_documento`, `nombres`, `apellido_paterno`, `apellido_materno`, `fecha_nacimiento`, `ubigeo`, `email`, `telefono`, `sexo`, `foto`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
-	(1, 'DNI', '70495760', 'Luis', 'Paredes', 'Caipo', NULL, NULL, 'admin@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:27', '2026-03-05 09:55:27', NULL, NULL, NULL, NULL),
+	(1, 'DNI', '70495760', 'Luis', 'Paredes', 'Caipo', NULL, NULL, 'admin@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:27', '2026-03-31 21:08:58', NULL, NULL, 1, NULL),
 	(2, 'DNI', '43931957', 'Arturo David', 'Gonzales', 'Briones', NULL, NULL, 'abriones@elcumbe.com.pe', NULL, NULL, NULL, b'1', '2026-03-05 09:55:28', '2026-03-05 09:55:28', NULL, NULL, NULL, NULL),
 	(3, 'DNI', '74581236', 'Carlos', 'Vargas', 'Rojas', NULL, NULL, 'service@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:30', '2026-03-05 09:55:30', NULL, NULL, NULL, NULL),
 	(4, 'DNI', '48921763', 'Renato', 'Salazar', 'Paredes', NULL, NULL, 'docente@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:32', '2026-03-05 09:55:32', NULL, NULL, NULL, NULL),
-	(5, 'DNI', '53609418', 'Bruno', 'Huaman', 'Torres', NULL, NULL, 'alumno@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:34', '2026-03-05 09:55:34', NULL, NULL, NULL, NULL);
+	(5, 'DNI', '53609418', 'Bruno', 'Huaman', 'Torres', NULL, NULL, 'alumno@sis-cursos.test', NULL, NULL, NULL, b'1', '2026-03-05 09:55:34', '2026-03-05 09:55:34', NULL, NULL, NULL, NULL),
+	(6, 'DNI', '73208695', 'Moises', 'Gutierrez', 'Terrones', NULL, NULL, NULL, NULL, NULL, NULL, b'1', '2026-03-31 10:00:53', '2026-03-31 10:00:53', NULL, NULL, 1, NULL),
+	(7, 'DNI', '73208690', 'Juan', 'perez', 'Ceras', NULL, NULL, 'juanp69@gmail.com', '976001682', NULL, NULL, b'1', '2026-03-31 10:00:53', '2026-03-31 10:00:53', NULL, NULL, 1, NULL);
 
 -- Volcando estructura para tabla inspecciones.regiones
 CREATE TABLE IF NOT EXISTS `regiones` (
@@ -1104,6 +1323,7 @@ CREATE TABLE IF NOT EXISTS `regiones` (
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.regiones: ~25 rows (aproximadamente)
+DELETE FROM `regiones`;
 INSERT INTO `regiones` (`id`, `pais_id`, `region`, `codigo`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
 	(1, 174, 'Amazonas', 'AMA', b'1', '2026-03-05 09:58:02', '2026-03-05 09:58:02', NULL, NULL, NULL, NULL),
 	(2, 174, 'Áncash', 'ANC', b'1', '2026-03-05 09:58:02', '2026-03-05 09:58:02', NULL, NULL, NULL, NULL),
@@ -1143,9 +1363,15 @@ CREATE TABLE IF NOT EXISTS `servicios` (
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `deleted_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
--- Volcando datos para la tabla inspecciones.servicios: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.servicios: ~4 rows (aproximadamente)
+DELETE FROM `servicios`;
+INSERT INTO `servicios` (`id`, `descripcion`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 'Mantenimiento', b'1', '2026-03-31 09:25:49', '2026-03-31 09:25:49', NULL, 1, NULL, NULL),
+	(2, 'Cucardas', b'1', '2026-03-31 09:25:57', '2026-03-31 09:25:57', NULL, 1, NULL, NULL),
+	(3, 'Inmobiliario', b'1', '2026-03-31 09:26:07', '2026-03-31 09:26:07', NULL, 1, NULL, NULL),
+	(4, 'Movimiento de tierras', b'1', '2026-03-31 21:08:00', '2026-03-31 21:08:00', NULL, 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.tipo_certificado
 CREATE TABLE IF NOT EXISTS `tipo_certificado` (
@@ -1164,6 +1390,7 @@ CREATE TABLE IF NOT EXISTS `tipo_certificado` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.tipo_certificado: ~0 rows (aproximadamente)
+DELETE FROM `tipo_certificado`;
 
 -- Volcando estructura para tabla inspecciones.tipo_inspeccion
 CREATE TABLE IF NOT EXISTS `tipo_inspeccion` (
@@ -1182,6 +1409,7 @@ CREATE TABLE IF NOT EXISTS `tipo_inspeccion` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.tipo_inspeccion: ~0 rows (aproximadamente)
+DELETE FROM `tipo_inspeccion`;
 
 -- Volcando estructura para tabla inspecciones.tipos
 CREATE TABLE IF NOT EXISTS `tipos` (
@@ -1197,9 +1425,18 @@ CREATE TABLE IF NOT EXISTS `tipos` (
   PRIMARY KEY (`id`) USING BTREE,
   KEY `tipos_tipo_index` (`tipo`) USING BTREE,
   KEY `tipos_estado_index` (`estado`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
--- Volcando datos para la tabla inspecciones.tipos: ~0 rows (aproximadamente)
+-- Volcando datos para la tabla inspecciones.tipos: ~7 rows (aproximadamente)
+DELETE FROM `tipos`;
+INSERT INTO `tipos` (`id`, `tipo`, `estado`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by`) VALUES
+	(1, 'asdasdasd', b'1', '2026-03-29 10:50:32', '2026-03-29 10:50:37', '2026-03-29 10:50:37', NULL, NULL, NULL),
+	(2, 'Vehiculo', b'1', '2026-03-29 21:41:35', '2026-03-29 21:41:35', NULL, NULL, NULL, NULL),
+	(3, 'Motocicleta', b'1', '2026-03-29 21:41:43', '2026-03-29 21:41:43', NULL, NULL, NULL, NULL),
+	(4, 'Generadores', b'1', '2026-03-29 21:41:55', '2026-03-29 21:41:55', NULL, NULL, NULL, NULL),
+	(5, 'Luminarias', b'1', '2026-03-29 21:42:04', '2026-03-29 21:42:04', NULL, NULL, NULL, NULL),
+	(6, 'Vehi', b'1', '2026-03-31 10:35:45', '2026-03-31 10:35:45', NULL, 1, NULL, NULL),
+	(7, 've', b'1', '2026-03-31 23:20:35', '2026-03-31 23:20:35', NULL, 1, NULL, NULL);
 
 -- Volcando estructura para tabla inspecciones.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -1224,17 +1461,13 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 -- Volcando datos para la tabla inspecciones.users: ~5 rows (aproximadamente)
+DELETE FROM `users`;
 INSERT INTO `users` (`id`, `persona_id`, `empresa_id`, `user_id`, `name`, `email`, `email_verified_at`, `username`, `password`, `two_factor_secret`, `two_factor_recovery_codes`, `two_factor_confirmed_at`, `estado`, `avatar`, `remember_token`, `created_at`, `updated_at`) VALUES
 	(1, 1, NULL, NULL, 'Luis Paredes Caipo', 'admin@sis-cursos.test', NULL, '70495760', '$2y$12$pX7ZQIwR1DTXTwvkNZd2qeLZBTfEuX4yDPnEmpJJgT1tX7bTPOZQe', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:28', '2026-03-05 09:55:28'),
 	(2, 2, 1, NULL, 'Arturo David Gonzales Briones', 'um@sis-cursos.test', NULL, '43931957', '$2y$12$Ay.j7hebMrDsXFlE07GpKuS9kVfwxhxXSPa6Mp/rRW4OC5U1FnbLy', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:29', '2026-03-05 09:55:29'),
 	(3, 3, NULL, NULL, 'Carlos Vargas Rojas', 'service@sis-cursos.test', NULL, '74581236', '$2y$12$Eat/IjEisxmeRH7tZudewuB4x9Ksf.M4n2fq1V0mC315DxQRtcBsm', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:31', '2026-03-05 09:55:31'),
 	(4, 4, NULL, NULL, 'Renato Salazar Paredes', 'docente@sis-cursos.test', NULL, '48921763', '$2y$12$ylhpr8VbdeV8A8787k8YzuXqfdmgk.6XBkEfbZKpeBP.htmNaI.sG', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:33', '2026-03-05 09:55:33'),
 	(5, 5, NULL, NULL, 'Bruno Huaman Torres', 'alumno@sis-cursos.test', NULL, '53609418', '$2y$12$0zGhYMxS8byhvLNkLRY8g.CqJYJObalEJ.GEj0qHLDw5sfFm3EUWe', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:35', '2026-03-05 09:55:35');
-
-
-ALTER TABLE `inspecciones`.`cuestionario_respuestas_observaciones` ADD COLUMN `momento` enum('ingreso','salida','ambos') NULL AFTER `descripcion`
-ALTER TABLE `inspecciones`.`cuestionario_respuestas_observaciones` ADD COLUMN `severidad` enum('baja','media','alta') CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci NULL DEFAULT NULL AFTER `momento`
-ALTER TABLE `inspecciones`.`cuestionario_respuestas_observaciones` DROP COLUMN `tipo_observacion`
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

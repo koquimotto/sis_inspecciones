@@ -86,6 +86,7 @@ class Formulario extends Component
     public array $inspectionFiles = [];
     public bool $inspectionFilePreviewModal = false;
     public array $inspectionFilePreview = [];
+    public ?string $uiOpenQuestionGroup = null;
     public array $customQuestionForm = [];
     public ?string $customQuestionGroupKey = null;
 
@@ -1575,6 +1576,7 @@ class Formulario extends Component
         $this->pendingSubgroups = [];
 
         if (!$detalleInspeccionId) {
+            $this->uiOpenQuestionGroup = null;
             return;
         }
 
@@ -1633,6 +1635,10 @@ class Formulario extends Component
         }
 
         $this->questionnaireGroups = array_values($groups);
+        $availableKeys = array_column($this->questionnaireGroups, 'key');
+        if ($this->uiOpenQuestionGroup === null || !in_array($this->uiOpenQuestionGroup, $availableKeys, true)) {
+            $this->uiOpenQuestionGroup = $this->questionnaireGroups[0]['key'] ?? null;
+        }
         $this->refreshQuestionnaireVisualState();
     }
 

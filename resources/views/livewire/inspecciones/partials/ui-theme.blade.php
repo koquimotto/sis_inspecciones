@@ -203,8 +203,9 @@
     .insp-ui .insp-chip--danger { background: var(--insp-danger-soft); color: var(--insp-danger); }
 
     .insp-ui .insp-loading-bar {
-        height: 3px;
+        height: 5px;
         background: linear-gradient(90deg, #4f46e5 0%, #0ea5e9 55%, #10b981 100%);
+        box-shadow: 0 1px 4px rgba(79, 70, 229, .35);
     }
 
     .insp-ui .insp-loading-pill {

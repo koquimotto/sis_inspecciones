@@ -1,18 +1,20 @@
 <div x-data="{ confirmDelete(type, id, label) { window.dispatchEvent(new CustomEvent('confirmar-eliminar-catalogo-inspeccion', { detail: { type, id, text: `Se eliminara el registro ${label}.` } })); } }" class="insp-ui mt-5 space-y-4">
     @include('livewire.inspecciones.partials.ui-theme')
-    <div wire:loading.delay
-         wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
-         class="fixed inset-x-0 top-0 z-[10001] pointer-events-none">
-        <div class="insp-loading-bar w-full animate-pulse"></div>
-    </div>
-    <div wire:loading.delay.shortest
-         wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
-         class="fixed right-4 top-4 z-[10002]">
-        <div class="insp-loading-pill">
-            <span class="insp-spinner"></span>
-            Actualizando...
+    <template x-teleport="body">
+        <div wire:loading.delay
+             wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
+             class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
+            <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
-    </div>
+        <div wire:loading.delay.shortest
+             wire:target="searchCategoria,searchSubCategoria,searchPregunta,seleccionarCategoria,seleccionarSubCategoria,limpiarFiltrosPregunta,openCategoriaModal,saveCategoria,openSubCategoriaModal,saveSubCategoria,openPreguntaModal,savePregunta,deleteItem"
+             class="fixed right-4 top-3 z-[20002]">
+            <div class="insp-loading-pill">
+                <span class="insp-spinner"></span>
+                Actualizando...
+            </div>
+        </div>
+    </template>
     <div class="box">
         <div class="justify-between box-header">
             <div>

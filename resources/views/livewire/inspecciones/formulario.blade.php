@@ -21,21 +21,23 @@
     $puedeEditarInspeccion = filled($inspeccion) && (!$certificadoGenerado || $vigenciaCertificadoVencida);
 @endphp
 
-<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observeModal: false, viewObservationModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @js($questionnaireGroups[0]['key'] ?? null) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="observeModal = true; viewObservationModal = false" x-on:observation-list-ready.window="viewObservationModal = true; observeModal = false" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
+<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observeModal: false, viewObservationModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @entangle('uiOpenQuestionGroup').live, scrollTimer: null }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="observeModal = true; viewObservationModal = false" x-on:observation-list-ready.window="viewObservationModal = true; observeModal = false" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
     @include('livewire.inspecciones.partials.ui-theme')
-    <div wire:loading.delay
-         wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
-         class="fixed inset-x-0 top-0 z-[10001] pointer-events-none">
-        <div class="insp-loading-bar w-full animate-pulse"></div>
-    </div>
-    <div wire:loading.delay.shortest
-         wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
-         class="fixed right-4 top-4 z-[10002]">
-        <div class="insp-loading-pill">
-            <span class="insp-spinner"></span>
-            Cargando...
+    <template x-teleport="body">
+        <div wire:loading.delay
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
+            <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
-    </div>
+        <div wire:loading.delay.shortest
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             class="fixed right-4 top-3 z-[20002]">
+            <div class="insp-loading-pill">
+                <span class="insp-spinner"></span>
+                Cargando...
+            </div>
+        </div>
+    </template>
     <div class="md:flex block items-center justify-between page-header-breadcrumb">
         <div>
             <p class="font-semibold text-[1.125rem] text-defaulttextcolor !mb-0">{{ $inspeccion ? 'Actualizar inspección' : 'Nueva inspección' }}</p>
@@ -307,27 +309,53 @@
                     </div>
 
                     @forelse ($questionnaireGroups as $group)
-                        <div class="rounded-2xl border border-defaultborder overflow-hidden bg-white shadow-sm"
-                             wire:mouseleave="saveSubgroup('{{ $group['key'] }}')">
+                        <div class="rounded-2xl border border-defaultborder overflow-hidden bg-white shadow-sm">
                             <div role="button" tabindex="0"
                                  class="w-full text-left px-4 py-4 transition cursor-pointer"
-                                 @click="openQuestionGroup = openQuestionGroup === '{{ $group['key'] }}' ? null : '{{ $group['key'] }}'"
-                                 @keydown.enter.prevent="openQuestionGroup = openQuestionGroup === '{{ $group['key'] }}' ? null : '{{ $group['key'] }}'"
+                                 @click="
+                                    const key = '{{ $group['key'] }}';
+                                    openQuestionGroup = openQuestionGroup === key ? null : key;
+                                    if (openQuestionGroup === key) {
+                                        clearTimeout(scrollTimer);
+                                        scrollTimer = setTimeout(() => {
+                                            if ($el && $el.isConnected && openQuestionGroup === key) {
+                                                const y = $el.getBoundingClientRect().top + window.scrollY - 96;
+                                                window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+                                            }
+                                        }, 240);
+                                    }
+                                 "
+                                 @keydown.enter.prevent="
+                                    const key = '{{ $group['key'] }}';
+                                    openQuestionGroup = openQuestionGroup === key ? null : key;
+                                    if (openQuestionGroup === key) {
+                                        clearTimeout(scrollTimer);
+                                        scrollTimer = setTimeout(() => {
+                                            if ($el && $el.isConnected && openQuestionGroup === key) {
+                                                const y = $el.getBoundingClientRect().top + window.scrollY - 96;
+                                                window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
+                                            }
+                                        }, 240);
+                                    }
+                                 "
                                  :style="openQuestionGroup === '{{ $group['key'] }}' ? 'background-color:#e9d5ff;' : 'background-color:#f8fafc;'">
                                 <div class="flex items-center justify-between gap-4">
                                     <div>
                                         <div class="font-semibold" style="color:#4c1d95;">Categoría: {{ $group['categoria'] }}</div>
-                                        <div class="mt-1 inline-flex items-center rounded-full px-3 py-1 text-[0.72rem] font-medium" style="background-color:#c4b5fd;color:#3b0764;">
-                                            Subcategoría: {{ $group['subcategoria'] }}
+                                        <div class="mt-1 inline-flex items-center gap-2">
+                                            <span class="inline-flex items-center rounded-full px-3 py-1 text-[0.72rem] font-medium" style="background-color:#c4b5fd;color:#3b0764;">
+                                                Subcategoría: {{ $group['subcategoria'] }}
+                                            </span>
+                                            <button type="button"
+                                                    class="ti-btn ti-btn-icon ti-btn-sm bg-primary text-white"
+                                                    title="Agregar pregunta adicional"
+                                                    wire:click="prepareCustomQuestionModal({{ $group['categoria_id'] }}, {{ $group['subcategoria_id'] }}, '{{ $group['key'] }}')"
+                                                    @click.stop>
+                                                <i class="ri-add-line"></i>
+                                            </button>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <button type="button" class="ti-btn ti-btn-sm bg-primary text-white"
-                                                title="Registrar pregunta adicional en esta subcategoría"
-                                                wire:click="prepareCustomQuestionModal({{ $group['categoria_id'] }}, {{ $group['subcategoria_id'] }}, '{{ $group['key'] }}')"
-                                                @click.stop>
-                                            <i class="ri-add-line me-1"></i>Pregunta adicional
-                                        </button>
                                         <span class="badge bg-primary/10 text-primary">{{ count($group['responses']) }} preguntas</span>
                                         <i class="ri-arrow-down-s-line text-[1.25rem] text-[#8c9097] transition-transform"
                                            :class="openQuestionGroup === '{{ $group['key'] }}' ? 'rotate-180' : ''"></i>
@@ -352,13 +380,27 @@
                                             </div>
                                             <div class="col-span-2 px-4 py-5" style="background-color:#e9d5ff;">
                                                 @if ($row['ingreso_preguntar'])
-                                                    @if (in_array($row['ingreso_tipo'], ['select', 'radio'], true))
+                                                    @if ($row['ingreso_tipo'] === 'select')
                                                         <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
                                                             <option value="">Seleccione...</option>
                                                             @foreach ($row['ingreso_valores'] as $opt)
                                                                 <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
                                                             @endforeach
                                                         </select>
+                                                    @elseif ($row['ingreso_tipo'] === 'radio')
+                                                        <div class="flex flex-wrap items-center gap-3 pt-2">
+                                                            @forelse ($row['ingreso_valores'] as $opt)
+                                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
+                                                                    <input type="radio"
+                                                                           class="form-check-input"
+                                                                           value="{{ $opt['value'] }}"
+                                                                           wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
+                                                                    <span>{{ $opt['label'] }}</span>
+                                                                </label>
+                                                            @empty
+                                                                <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
+                                                            @endforelse
+                                                        </div>
                                                     @else
                                                         <input type="text" class="form-control bg-white" placeholder="Respuesta ingreso" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
                                                     @endif
@@ -368,13 +410,27 @@
                                             </div>
                                             <div class="col-span-2 px-4 py-5" style="background-color:#bbf7d0;">
                                                 @if ($row['salida_preguntar'])
-                                                    @if (in_array($row['salida_tipo'], ['select', 'radio'], true))
+                                                    @if ($row['salida_tipo'] === 'select')
                                                         <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
                                                             <option value="">Seleccione...</option>
                                                             @foreach ($row['salida_valores'] as $opt)
                                                                 <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
                                                             @endforeach
                                                         </select>
+                                                    @elseif ($row['salida_tipo'] === 'radio')
+                                                        <div class="flex flex-wrap items-center gap-3 pt-2">
+                                                            @forelse ($row['salida_valores'] as $opt)
+                                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
+                                                                    <input type="radio"
+                                                                           class="form-check-input"
+                                                                           value="{{ $opt['value'] }}"
+                                                                           wire:model.live="responsesInput.{{ $row['id'] }}.salida">
+                                                                    <span>{{ $opt['label'] }}</span>
+                                                                </label>
+                                                            @empty
+                                                                <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
+                                                            @endforelse
+                                                        </div>
                                                     @else
                                                         <input type="text" class="form-control bg-white" placeholder="Respuesta salida" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
                                                     @endif
@@ -1048,4 +1104,3 @@
     </div>
     </template>
 </div>
-
