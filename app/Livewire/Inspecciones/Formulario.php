@@ -992,45 +992,55 @@ class Formulario extends Component
     {
         $this->activeObservationResponseId = $responseId;
         $this->observationForm = $this->defaultObservationForm();
-        $this->dispatch('observation-form-ready');
+        $this->dispatch('observation-form-ready', defaults: $this->observationForm);
+        $this->skipRender();
     }
 
     public function openObservationList(int $responseId): void
     {
-        $this->activeObservationResponseId = $responseId;
-        $this->activeResponseObservations = CuestionarioRespuestaObservacion::query()
+        $observations = CuestionarioRespuestaObservacion::query()
             ->where('cuestionario_respuesta_id', $responseId)
             ->latest('id')
             ->get()
             ->map(fn (CuestionarioRespuestaObservacion $obs) => [
                 'id' => (int) $obs->id,
-                'tipo_observacion' => (string) ($obs->tipo_observacion ?: 'Ambos'),
+                'momento' => match ((string) $obs->momento) {
+                    'ingreso' => 'Ingreso',
+                    'salida' => 'Salida',
+                    default => 'Ambos',
+                },
                 'descripcion' => (string) $obs->descripcion,
                 'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
             ])
             ->all();
 
-        $this->dispatch('observation-list-ready');
+        $this->dispatch('observation-list-ready', observations: $observations);
+        $this->skipRender();
     }
 
     public function saveObservation(): void
+    {
+        $this->saveObservationFromModal($this->observationForm);
+    }
+
+    public function saveObservationFromModal(array $payload = []): void
     {
         if (!$this->activeObservationResponseId) {
             return;
         }
 
-        $data = $this->validate([
-            'observationForm.tipo_observacion' => ['required', Rule::in(['Ingreso', 'Salida', 'Ambos'])],
-            'observationForm.descripcion' => ['required', 'string', 'max:255'],
+        $data = Validator::make($payload, [
+            'momento' => ['required', Rule::in(['ingreso', 'salida', 'ambos'])],
+            'descripcion' => ['required', 'string', 'max:255'],
         ], [], [
-            'observationForm.tipo_observacion' => 'momento',
-            'observationForm.descripcion' => 'detalle de observacion',
-        ]);
+            'momento' => 'momento',
+            'descripcion' => 'detalle de observacion',
+        ])->validate();
 
         CuestionarioRespuestaObservacion::query()->create([
             'cuestionario_respuesta_id' => $this->activeObservationResponseId,
-            'descripcion' => trim((string) $data['observationForm']['descripcion']),
-            'tipo_observacion' => (string) $data['observationForm']['tipo_observacion'],
+            'descripcion' => trim((string) $data['descripcion']),
+            'momento' => (string) $data['momento'],
             'estado' => 1,
             'created_by' => Auth::id(),
             'updated_by' => Auth::id(),
@@ -1040,8 +1050,8 @@ class Formulario extends Component
             $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
         }
 
-        $this->openObservationList($this->activeObservationResponseId);
         $this->observationForm = $this->defaultObservationForm();
+        $this->dispatch('observation-saved');
         $this->dispatch('swal', type: 'success', title: 'Observacion registrada', text: 'La observacion se guardo correctamente.', toast: true, timer: 2200);
     }
 
@@ -1462,7 +1472,7 @@ class Formulario extends Component
     private function defaultObservationForm(): array
     {
         return [
-            'tipo_observacion' => 'Ambos',
+            'momento' => 'ambos',
             'descripcion' => '',
         ];
     }

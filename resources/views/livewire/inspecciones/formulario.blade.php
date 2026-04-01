@@ -21,16 +21,16 @@
     $puedeEditarInspeccion = filled($inspeccion) && (!$certificadoGenerado || $vigenciaCertificadoVencida);
 @endphp
 
-<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observeModal: false, viewObservationModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @entangle('uiOpenQuestionGroup').live, scrollTimer: null }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="observeModal = true; viewObservationModal = false" x-on:observation-list-ready.window="viewObservationModal = true; observeModal = false" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
+<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @entangle('uiOpenQuestionGroup').live, scrollTimer: null }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="window.InspeccionesObs?.openCreate($wire, $event.detail || {})" x-on:observation-list-ready.window="window.InspeccionesObs?.openList(($event.detail && $event.detail.observations) ? $event.detail.observations : [])" x-on:observation-saved.window="window.InspeccionesObs?.close()" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
     @include('livewire.inspecciones.partials.ui-theme')
     <template x-teleport="body">
         <div wire:loading.delay
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
              class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
             <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
         <div wire:loading.delay.shortest
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
              class="fixed right-4 top-3 z-[20002]">
             <div class="insp-loading-pill">
                 <span class="insp-spinner"></span>
@@ -676,59 +676,6 @@
     </template>
 
     <template x-teleport="body">
-    <div x-show="viewObservationModal" x-cloak class="fixed inset-0 z-[9999]">
-        <div class="absolute inset-0 bg-slate-950/60" @click="viewObservationModal = false"></div>
-        <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
-            <div class="w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-[#0b1220]">
-                <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4"><h3 class="text-[15px] font-semibold">Observaciones registradas</h3><button type="button" class="text-slate-500" @click="viewObservationModal = false"><i class="ri-close-line text-[1.35rem] leading-none"></i></button></div>
-                <div class="px-6 py-5 space-y-3">
-                    @forelse ($activeResponseObservations as $obs)
-                        <div class="rounded-xl bg-warning/5 p-4">
-                            <div class="font-medium text-warning">{{ $obs['tipo_observacion'] }} · {{ $obs['fecha'] }}</div>
-                            <div class="mt-2 text-[0.9rem] text-[#8c9097]">{{ $obs['descripcion'] }}</div>
-                        </div>
-                    @empty
-                        <div class="text-[0.9rem] text-[#8c9097]">No hay observaciones registradas para esta respuesta.</div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-    </div>
-    </template>
-
-    <template x-teleport="body">
-    <div x-show="observeModal" x-cloak class="fixed inset-0 z-[9999]">
-        <div class="absolute inset-0 bg-slate-950/60" @click="observeModal = false"></div>
-        <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
-            <div class="w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-[#0b1220]">
-                <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4"><h3 class="text-[15px] font-semibold">Registrar observación</h3><button type="button" class="text-slate-500" @click="observeModal = false"><i class="ri-close-line text-[1.35rem] leading-none"></i></button></div>
-                <div class="px-6 py-5 space-y-4">
-                    <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-12 md:col-span-6">
-                            <label class="form-label">Momento</label>
-                            <select class="form-control" wire:model.defer="observationForm.tipo_observacion">
-                                <option value="Ingreso">Ingreso</option>
-                                <option value="Salida">Salida</option>
-                                <option value="Ambos">Ambos</option>
-                            </select>
-                            @error('observationForm.tipo_observacion') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label">Detalle de observación</label>
-                        <textarea class="form-control" rows="4" placeholder="Describe la observación a subsanar" wire:model.defer="observationForm.descripcion"></textarea>
-                        @error('observationForm.descripcion') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 border-t border-defaultborder px-6 py-4">
-                    <button type="button" class="ti-btn ti-btn-light" @click="observeModal = false">Cancelar</button>
-                    <button type="button" class="ti-btn bg-warning text-white" wire:click="saveObservation">Guardar observación</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    </template>
-    <template x-teleport="body">
     <div x-show="companyModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="companyModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -1103,4 +1050,119 @@
         </div>
     </div>
     </template>
+
+    @once
+        <script>
+            window.InspeccionesObs = window.InspeccionesObs || {
+                close() {
+                    if (window.Swal && Swal.isVisible()) {
+                        Swal.close();
+                    }
+                },
+                openList(observations) {
+                    const currentScrollY = window.scrollY || window.pageYOffset || 0;
+                    const rows = Array.isArray(observations) ? observations : [];
+                    const html = rows.length
+                        ? rows.map((obs) => `
+                            <div style="border:1px solid #f3e8cf;background:#fffdf8;border-radius:10px;padding:12px 14px;margin-bottom:10px;text-align:left;">
+                                <div style="font-weight:600;color:#d97706;font-size:13px;">${obs.momento ?? 'Ambos'} · ${obs.fecha ?? '-'}</div>
+                                <div style="margin-top:6px;color:#52525b;font-size:14px;line-height:1.4;">${obs.descripcion ?? ''}</div>
+                            </div>
+                        `).join('')
+                        : '<div style="color:#8c9097;font-size:14px;">No hay observaciones registradas para esta respuesta.</div>';
+
+                    Swal.fire({
+                        title: 'Observaciones registradas',
+                        html,
+                        width: 760,
+                        showConfirmButton: false,
+                        showCloseButton: true,
+                        focusConfirm: false,
+                        heightAuto: false,
+                        scrollbarPadding: false,
+                        willOpen: () => {
+                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
+                        },
+                        didOpen: () => {
+                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
+                        },
+                        customClass: {
+                            popup: '!rounded-2xl !text-left',
+                            title: '!text-[15px] !font-semibold !mb-2',
+                            htmlContainer: '!p-0 !max-h-[60vh] !overflow-y-auto'
+                        }
+                    });
+                },
+                openCreate(wire, detail) {
+                    const currentScrollY = window.scrollY || window.pageYOffset || 0;
+                    const defaults = (detail && detail.defaults) ? detail.defaults : {};
+                    const defaultMomento = defaults.momento ?? 'ambos';
+                    const defaultDescripcion = defaults.descripcion ?? '';
+
+                    Swal.fire({
+                        title: 'Registrar observación',
+                        html: `
+                            <div style="display:grid;gap:12px;text-align:left;">
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:600;color:#52525b;margin-bottom:6px;">Momento</label>
+                                    <select id="insp-obs-momento" class="swal2-input" style="margin:0;width:100%;height:42px;">
+                                        <option value="ingreso">Ingreso</option>
+                                        <option value="salida">Salida</option>
+                                        <option value="ambos">Ambos</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:600;color:#52525b;margin-bottom:6px;">Detalle de observación</label>
+                                    <textarea id="insp-obs-descripcion" class="swal2-textarea" placeholder="Describe la observación a subsanar" style="margin:0;width:100%;height:120px;resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                        `,
+                        width: 620,
+                        showCancelButton: true,
+                        confirmButtonText: 'Guardar observación',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: true,
+                        focusConfirm: false,
+                        allowOutsideClick: () => !Swal.isLoading(),
+                        heightAuto: false,
+                        scrollbarPadding: false,
+                        willOpen: () => {
+                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
+                        },
+                        didOpen: () => {
+                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
+                            const momento = document.getElementById('insp-obs-momento');
+                            const descripcion = document.getElementById('insp-obs-descripcion');
+                            if (momento) momento.value = defaultMomento;
+                            if (descripcion) descripcion.value = defaultDescripcion;
+                        },
+                        preConfirm: async () => {
+                            const momentoEl = document.getElementById('insp-obs-momento');
+                            const descripcionEl = document.getElementById('insp-obs-descripcion');
+                            const momento = (momentoEl?.value || '').trim();
+                            const descripcion = (descripcionEl?.value || '').trim();
+
+                            if (!momento || !['ingreso', 'salida', 'ambos'].includes(momento)) {
+                                Swal.showValidationMessage('Selecciona el momento de la observación.');
+                                return false;
+                            }
+
+                            if (!descripcion) {
+                                Swal.showValidationMessage('Describe la observación antes de guardar.');
+                                return false;
+                            }
+
+                            try {
+                                await wire.saveObservationFromModal({ momento, descripcion });
+                                return true;
+                            } catch (error) {
+                                Swal.showValidationMessage('No se pudo guardar la observación. Intenta nuevamente.');
+                                return false;
+                            }
+                        }
+                    });
+                }
+            };
+        </script>
+    @endonce
 </div>

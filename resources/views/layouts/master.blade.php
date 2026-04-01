@@ -57,23 +57,31 @@
                 title: e.title ?? 'OK',
                 text: e.text ?? '',
                 toast: asToast,
-                position: e.position ?? (asToast ? 'top-end' : 'center'),
+                position: asToast ? 'top-end' : (e.position ?? 'center'),
                 timer: requireConfirm ? undefined : (e.timer ?? 1600),
                 showConfirmButton: requireConfirm ? true : !!e.showConfirmButton,
                 confirmButtonText: e.confirmText ?? 'Aceptar',
                 timerProgressBar: !requireConfirm,
                 allowOutsideClick: !requireConfirm,
                 allowEscapeKey: !requireConfirm,
+                heightAuto: false,
+                scrollbarPadding: false,
                 background: asToast ? theme.background : undefined,
                 color: asToast ? theme.color : undefined,
                 iconColor: asToast ? theme.iconColor : undefined,
                 customClass: asToast ? {
-                  popup: '!rounded-xl !shadow-lg !border !border-black/5 !px-3 !py-2',
-                  title: '!text-[0.92rem] !font-semibold !mb-0.5',
-                  htmlContainer: '!text-[0.8rem] !mt-0.5',
+                  popup: '!rounded-lg !shadow-md !border !border-black/5 !px-4 !py-3 !w-[320px]',
+                  title: '!text-[1rem] !font-semibold !mb-0.5 !leading-tight',
+                  htmlContainer: '!text-[0.82rem] !mt-0.5 !leading-tight',
                   closeButton: '!text-slate-500 hover:!text-slate-800'
                 } : undefined,
                 showCloseButton: asToast,
+                didOpen: (toast) => {
+                  if (asToast) {
+                    toast.style.marginTop = '10px';
+                    toast.style.marginRight = '10px';
+                  }
+                },
               });
             });
           });
