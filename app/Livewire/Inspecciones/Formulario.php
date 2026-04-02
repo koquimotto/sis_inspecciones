@@ -71,6 +71,7 @@ class Formulario extends Component
     public bool $inspectionDetailModal = false;
     public array $inspectionDetailView = [];
     public array $questionnaireGroups = [];
+    public array $questionnaireCategories = [];
     public array $responsesInput = [];
     public array $responseMeta = [];
     public array $responseSubgroupMap = [];
@@ -86,7 +87,9 @@ class Formulario extends Component
     public array $inspectionFiles = [];
     public bool $inspectionFilePreviewModal = false;
     public array $inspectionFilePreview = [];
-    public ?string $uiOpenQuestionGroup = null;
+    public ?int $uiActiveQuestionCategoryId = null;
+    public ?int $uiActiveQuestionSubcategoryId = null;
+    public string $uiInspectionTab = 'questions';
     public array $customQuestionForm = [];
     public ?string $customQuestionGroupKey = null;
 
@@ -817,18 +820,61 @@ class Formulario extends Component
 
     public function updatedResponsesInput($value, string $name): void
     {
-        if (!preg_match('/^responsesInput\.(\d+)\.(ingreso|salida)$/', $name, $matches)) {
+        if (!preg_match('/^(?:responsesInput\.)?(\d+)\.(ingreso|salida)$/', $name, $matches)) {
             return;
         }
 
         $responseId = (int) $matches[1];
-        $subgroupKey = $this->responseSubgroupMap[$responseId] ?? null;
-        if (!$subgroupKey) {
+        $this->persistResponse($responseId);
+    }
+
+    public function selectQuestionCategory(int $categoriaId): void
+    {
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === $categoriaId);
+
+        if (!$selectedCategory) {
             return;
         }
 
-        $this->pendingSubgroups[$subgroupKey] = true;
-        $this->refreshQuestionnaireVisualState();
+        $this->uiInspectionTab = 'questions';
+        $this->uiActiveQuestionCategoryId = (int) $selectedCategory['id'];
+        $firstSubcategoryId = isset($selectedCategory['subcategorias'][0]['id'])
+            ? (int) $selectedCategory['subcategorias'][0]['id']
+            : null;
+        $this->uiActiveQuestionSubcategoryId = $firstSubcategoryId;
+    }
+
+    public function selectQuestionSubcategory(int $subCategoriaId): void
+    {
+        if (!$this->uiActiveQuestionCategoryId) {
+            return;
+        }
+
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === (int) $this->uiActiveQuestionCategoryId);
+        if (!$selectedCategory) {
+            return;
+        }
+
+        $exists = collect($selectedCategory['subcategorias'] ?? [])
+            ->contains(fn (array $sub) => (int) $sub['id'] === $subCategoriaId);
+        if (!$exists) {
+            return;
+        }
+
+        $this->uiInspectionTab = 'questions';
+        $this->uiActiveQuestionSubcategoryId = $subCategoriaId;
+    }
+
+    public function selectInspectionFilesTab(): void
+    {
+        $this->uiInspectionTab = 'files';
+    }
+
+    public function selectInspectionQuestionsTab(): void
+    {
+        $this->uiInspectionTab = 'questions';
     }
 
     public function startInspection(): void
@@ -955,36 +1001,20 @@ class Formulario extends Component
 
     public function saveSubgroup(string $subgroupKey): void
     {
-        if (!($this->pendingSubgroups[$subgroupKey] ?? false)) {
-            return;
-        }
-
         $responseIds = $this->subgroupResponseIds[$subgroupKey] ?? [];
         if ($responseIds === []) {
             return;
         }
 
         foreach ($responseIds as $responseId) {
-            $input = $this->responsesInput[$responseId] ?? [];
-            CuestionarioRespuesta::query()
-                ->whereKey($responseId)
-                ->update([
-                    'ingreso_respuesta' => $this->normalizeNullableText($input['ingreso'] ?? null),
-                    'salida_respuesta' => $this->normalizeNullableText($input['salida'] ?? null),
-                    'updated_by' => Auth::id(),
-                ]);
+            $this->persistResponse((int) $responseId);
         }
-
-        $this->pendingSubgroups[$subgroupKey] = false;
-        $this->refreshQuestionnaireVisualState();
     }
 
     public function flushPendingResponses(): void
     {
-        foreach ($this->pendingSubgroups as $key => $isPending) {
-            if ($isPending) {
-                $this->saveSubgroup((string) $key);
-            }
+        foreach (array_keys($this->responsesInput) as $responseId) {
+            $this->persistResponse((int) $responseId);
         }
     }
 
@@ -998,23 +1028,10 @@ class Formulario extends Component
 
     public function openObservationList(int $responseId): void
     {
-        $observations = CuestionarioRespuestaObservacion::query()
-            ->where('cuestionario_respuesta_id', $responseId)
-            ->latest('id')
-            ->get()
-            ->map(fn (CuestionarioRespuestaObservacion $obs) => [
-                'id' => (int) $obs->id,
-                'momento' => match ((string) $obs->momento) {
-                    'ingreso' => 'Ingreso',
-                    'salida' => 'Salida',
-                    default => 'Ambos',
-                },
-                'descripcion' => (string) $obs->descripcion,
-                'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
-            ])
-            ->all();
+        $this->activeObservationResponseId = $responseId;
+        $observations = $this->buildObservationList($responseId);
 
-        $this->dispatch('observation-list-ready', observations: $observations);
+        $this->dispatch('observation-list-ready', observations: $observations, responseId: $responseId);
         $this->skipRender();
     }
 
@@ -1053,6 +1070,37 @@ class Formulario extends Component
         $this->observationForm = $this->defaultObservationForm();
         $this->dispatch('observation-saved');
         $this->dispatch('swal', type: 'success', title: 'Observacion registrada', text: 'La observacion se guardo correctamente.', toast: true, timer: 2200);
+    }
+
+    public function deleteObservationFromModal(int $observationId): void
+    {
+        $observation = CuestionarioRespuestaObservacion::query()
+            ->whereKey($observationId)
+            ->where('estado', 1)
+            ->first();
+
+        if (!$observation) {
+            return;
+        }
+
+        $responseId = (int) $observation->cuestionario_respuesta_id;
+        $observation->update([
+            'estado' => 0,
+            'updated_by' => Auth::id(),
+            'deleted_by' => Auth::id(),
+        ]);
+        $observation->delete();
+
+        if ($this->currentDetalleInspeccionId) {
+            $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
+        }
+
+        $this->dispatch(
+            'observation-list-ready',
+            observations: $this->buildObservationList($responseId),
+            responseId: $responseId
+        );
+        $this->dispatch('swal', type: 'success', title: 'Observacion eliminada', text: 'La observacion fue eliminada correctamente.', toast: true, timer: 1800);
     }
 
     public function prepareCustomQuestionModal(int $categoriaId, int $subCategoriaId, string $groupKey): void
@@ -1579,6 +1627,7 @@ class Formulario extends Component
     private function loadQuestionnaireForDetalle(?int $detalleInspeccionId): void
     {
         $this->questionnaireGroups = [];
+        $this->questionnaireCategories = [];
         $this->responsesInput = [];
         $this->responseMeta = [];
         $this->responseSubgroupMap = [];
@@ -1586,7 +1635,9 @@ class Formulario extends Component
         $this->pendingSubgroups = [];
 
         if (!$detalleInspeccionId) {
-            $this->uiOpenQuestionGroup = null;
+            $this->uiActiveQuestionCategoryId = null;
+            $this->uiActiveQuestionSubcategoryId = null;
+            $this->uiInspectionTab = 'questions';
             return;
         }
 
@@ -1604,6 +1655,7 @@ class Formulario extends Component
             ->get();
 
         $groups = [];
+        $categories = [];
         foreach ($respuestas as $respuesta) {
             $groupKey = $respuesta->cuestionario_categoria_id . '-' . $respuesta->cuestionario_sub_categoria_id;
             if (!isset($groups[$groupKey])) {
@@ -1614,8 +1666,6 @@ class Formulario extends Component
                     'categoria' => $respuesta->categoria?->descripcion ?: 'Sin categoria',
                     'subcategoria' => $respuesta->subCategoria?->descripcion ?: 'Sin subcategoria',
                     'responses' => [],
-                    'completed' => false,
-                    'pending' => false,
                 ];
             }
 
@@ -1631,6 +1681,9 @@ class Formulario extends Component
                 'salida_tipo' => $salidaType,
                 'salida_valores' => $this->parseRespuestaValores((string) ($respuesta->pregunta?->salida_respuesta_valores ?? '')),
                 'observaciones_count' => (int) ($respuesta->observaciones_adjuntas_count ?? 0),
+                'categoria_id' => (int) $respuesta->cuestionario_categoria_id,
+                'subcategoria_id' => (int) $respuesta->cuestionario_sub_categoria_id,
+                'group_key' => $groupKey,
             ];
 
             $groups[$groupKey]['responses'][] = $item;
@@ -1642,14 +1695,52 @@ class Formulario extends Component
             $this->responseSubgroupMap[(int) $respuesta->id] = $groupKey;
             $this->subgroupResponseIds[$groupKey][] = (int) $respuesta->id;
             $this->pendingSubgroups[$groupKey] = false;
+
+            $categoriaId = (int) $respuesta->cuestionario_categoria_id;
+            $subCategoriaId = (int) $respuesta->cuestionario_sub_categoria_id;
+            if (!isset($categories[$categoriaId])) {
+                $categories[$categoriaId] = [
+                    'id' => $categoriaId,
+                    'nombre' => $respuesta->categoria?->descripcion ?: 'Sin categoria',
+                    'preguntas' => 0,
+                    'subcategorias' => [],
+                ];
+            }
+            $categories[$categoriaId]['preguntas']++;
+            if (!isset($categories[$categoriaId]['subcategorias'][$subCategoriaId])) {
+                $categories[$categoriaId]['subcategorias'][$subCategoriaId] = [
+                    'id' => $subCategoriaId,
+                    'nombre' => $respuesta->subCategoria?->descripcion ?: 'Sin subcategoria',
+                    'key' => $groupKey,
+                    'preguntas' => 0,
+                    'has_observaciones' => false,
+                ];
+            }
+            $categories[$categoriaId]['subcategorias'][$subCategoriaId]['preguntas']++;
+            if ((int) ($respuesta->observaciones_adjuntas_count ?? 0) > 0) {
+                $categories[$categoriaId]['subcategorias'][$subCategoriaId]['has_observaciones'] = true;
+            }
         }
 
         $this->questionnaireGroups = array_values($groups);
-        $availableKeys = array_column($this->questionnaireGroups, 'key');
-        if ($this->uiOpenQuestionGroup === null || !in_array($this->uiOpenQuestionGroup, $availableKeys, true)) {
-            $this->uiOpenQuestionGroup = $this->questionnaireGroups[0]['key'] ?? null;
+        $this->questionnaireCategories = array_values(array_map(function (array $cat): array {
+            $cat['subcategorias'] = array_values($cat['subcategorias']);
+            return $cat;
+        }, $categories));
+
+        $availableCategoryIds = array_map(fn (array $cat): int => (int) $cat['id'], $this->questionnaireCategories);
+        if ($this->uiActiveQuestionCategoryId === null || !in_array((int) $this->uiActiveQuestionCategoryId, $availableCategoryIds, true)) {
+            $this->uiActiveQuestionCategoryId = $this->questionnaireCategories[0]['id'] ?? null;
         }
-        $this->refreshQuestionnaireVisualState();
+
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === (int) $this->uiActiveQuestionCategoryId);
+        $availableSubcategoryIds = collect($selectedCategory['subcategorias'] ?? [])
+            ->map(fn (array $sub): int => (int) $sub['id'])
+            ->all();
+        if ($this->uiActiveQuestionSubcategoryId === null || !in_array((int) $this->uiActiveQuestionSubcategoryId, $availableSubcategoryIds, true)) {
+            $this->uiActiveQuestionSubcategoryId = $selectedCategory['subcategorias'][0]['id'] ?? null;
+        }
     }
 
     private function parseRespuestaValores(string $raw): array
@@ -1673,34 +1764,40 @@ class Formulario extends Component
         return $options;
     }
 
-    private function isResponseComplete(int $responseId): bool
+    private function persistResponse(int $responseId): void
     {
-        $meta = $this->responseMeta[$responseId] ?? null;
-        $input = $this->responsesInput[$responseId] ?? null;
-        if (!$meta || !$input) {
-            return false;
+        if (!isset($this->responsesInput[$responseId])) {
+            return;
         }
 
-        $ingresoOk = !$meta['ingreso_preguntar'] || trim((string) ($input['ingreso'] ?? '')) !== '';
-        $salidaOk = !$meta['salida_preguntar'] || trim((string) ($input['salida'] ?? '')) !== '';
-        return $ingresoOk && $salidaOk;
+        $input = $this->responsesInput[$responseId] ?? [];
+        CuestionarioRespuesta::query()
+            ->whereKey($responseId)
+            ->update([
+                'ingreso_respuesta' => $this->normalizeNullableText($input['ingreso'] ?? null),
+                'salida_respuesta' => $this->normalizeNullableText($input['salida'] ?? null),
+                'updated_by' => Auth::id(),
+            ]);
     }
 
-    private function refreshQuestionnaireVisualState(): void
+    private function buildObservationList(int $responseId): array
     {
-        foreach ($this->questionnaireGroups as $index => $group) {
-            $ids = $this->subgroupResponseIds[$group['key']] ?? [];
-            $allDone = !empty($ids);
-            foreach ($ids as $id) {
-                if (!$this->isResponseComplete((int) $id)) {
-                    $allDone = false;
-                    break;
-                }
-            }
-
-            $this->questionnaireGroups[$index]['completed'] = $allDone;
-            $this->questionnaireGroups[$index]['pending'] = (bool) ($this->pendingSubgroups[$group['key']] ?? false);
-        }
+        return CuestionarioRespuestaObservacion::query()
+            ->where('cuestionario_respuesta_id', $responseId)
+            ->where('estado', 1)
+            ->latest('id')
+            ->get()
+            ->map(fn (CuestionarioRespuestaObservacion $obs) => [
+                'id' => (int) $obs->id,
+                'momento' => match ((string) $obs->momento) {
+                    'ingreso' => 'Ingreso',
+                    'salida' => 'Salida',
+                    default => 'Ambos',
+                },
+                'descripcion' => (string) $obs->descripcion,
+                'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
+            ])
+            ->all();
     }
 
     private function normalizeNullableText($value): ?string

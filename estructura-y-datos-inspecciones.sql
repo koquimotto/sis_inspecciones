@@ -248,7 +248,6 @@ INSERT INTO `cuestionario_preguntas` (`id`, `cuestionario_categoria_id`, `cuesti
 	(9, 1, 1, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Nivel de combustible en el tanque', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(10, 1, 1, '.2.', NULL, NULL, NULL, 10, 'valor_unico', 'Fecha de ultimo mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(11, 1, 1, '.2.', NULL, NULL, NULL, 11, 'valor_unico', 'Tipo de mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
-	(15, 1, 1, '.2.', NULL, NULL, NULL, 15, 'valor_unico', 'SOAT / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(16, 1, 1, '.2.', NULL, NULL, NULL, 16, 'valor_unico', 'Seguro contra todo riesgo / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(17, 2, 2, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'ROPS (Roller Over Protection System) Sistema protector contra volcaduras', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(18, 2, 2, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Faros neblineros (02) (opcional)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
@@ -383,6 +382,8 @@ INSERT INTO `cuestionario_preguntas` (`id`, `cuestionario_categoria_id`, `cuesti
 	(147, 4, 11, '.2.', NULL, NULL, NULL, 5, 'ingreso_salida', 'Datos de neumaticos', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(148, 4, 11, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Tabla de cargas de pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(149, 4, 11, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Certificado de operatividad de la pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 21:28:06', NULL, NULL, NULL, NULL);
+
+
 
 -- Volcando estructura para tabla inspecciones.cuestionario_respuestas
 CREATE TABLE IF NOT EXISTS `cuestionario_respuestas` (

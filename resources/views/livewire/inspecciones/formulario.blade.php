@@ -21,16 +21,16 @@
     $puedeEditarInspeccion = filled($inspeccion) && (!$certificadoGenerado || $vigenciaCertificadoVencida);
 @endphp
 
-<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones), openQuestionGroup: @entangle('uiOpenQuestionGroup').live, scrollTimer: null }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="window.InspeccionesObs?.openCreate($wire, $event.detail || {})" x-on:observation-list-ready.window="window.InspeccionesObs?.openList(($event.detail && $event.detail.observations) ? $event.detail.observations : [])" x-on:observation-saved.window="window.InspeccionesObs?.close()" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false; if($event.detail.groupKey){ openQuestionGroup = $event.detail.groupKey }" class="insp-ui mt-5 space-y-5">
+<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observationHistoryModal: false, observationHistoryRows: [], observationHistoryResponseId: null, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="window.InspeccionesObs?.openCreate($wire, $event.detail || {})" x-on:observation-list-ready.window="observationHistoryRows = (($event.detail && $event.detail.observations) ? $event.detail.observations : []); observationHistoryResponseId = ($event.detail && $event.detail.responseId ? $event.detail.responseId : null); observationHistoryModal = true" x-on:observation-saved.window="window.InspeccionesObs?.close()" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false" class="insp-ui mt-5 space-y-5">
     @include('livewire.inspecciones.partials.ui-theme')
     <template x-teleport="body">
         <div wire:loading.delay
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
              class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
             <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
         <div wire:loading.delay.shortest
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
              class="fixed right-4 top-3 z-[20002]">
             <div class="insp-loading-pill">
                 <span class="insp-spinner"></span>
@@ -286,191 +286,171 @@
         <div class="box">
             <div class="box-body space-y-4">
                 <fieldset :disabled="inspectionFinalized" :class="inspectionFinalized ? 'opacity-80' : ''" class="space-y-4">
-                    <div class="grid grid-cols-12 gap-3">
-                        <div class="col-span-12 md:col-span-6 rounded-xl border border-defaultborder bg-white px-4 py-3 shadow-sm">
-                            <div class="flex items-center gap-3">
-                                <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#7c3aed;">INSPECCIÓN</span>
-                                <span class="badge bg-primary/10 text-primary">{{ count($responsesInput) }} preguntas</span>
+                    @php
+                        $selectedCategory = collect($questionnaireCategories)->firstWhere('id', $uiActiveQuestionCategoryId);
+                        $selectedSubcategory = $selectedCategory
+                            ? collect($selectedCategory['subcategorias'] ?? [])->firstWhere('id', $uiActiveQuestionSubcategoryId)
+                            : null;
+                        $activeGroup = collect($questionnaireGroups)->first(function ($group) use ($uiActiveQuestionCategoryId, $uiActiveQuestionSubcategoryId) {
+                            return (int) ($group['categoria_id'] ?? 0) === (int) $uiActiveQuestionCategoryId
+                                && (int) ($group['subcategoria_id'] ?? 0) === (int) $uiActiveQuestionSubcategoryId;
+                        });
+                    @endphp
+
+                    <div class="rounded-xl border border-defaultborder bg-white px-4 py-3 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#7c3aed;">INSPECCIÓN</span>
+                            <span class="badge bg-primary/10 text-primary">{{ count($responsesInput) }} preguntas</span>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-defaultborder bg-white shadow-sm">
+                        <div class="border-b border-defaultborder px-4 py-3">
+                            <div class="insp-tab-strip">
+                                @forelse ($questionnaireCategories as $categoria)
+                                    <button type="button"
+                                            class="insp-tab {{ $uiInspectionTab === 'questions' && (int) $uiActiveQuestionCategoryId === (int) $categoria['id'] ? 'is-active' : '' }}"
+                                            wire:click="selectQuestionCategory({{ $categoria['id'] }})"
+                                            title="{{ $categoria['nombre'] }}">
+                                        <span>{{ $categoria['nombre'] }}</span>
+                                    </button>
+                                @empty
+                                    <span class="text-[0.85rem] text-[#8c9097]">No hay categorías configuradas.</span>
+                                @endforelse
+                                <button type="button"
+                                        class="insp-tab {{ $uiInspectionTab === 'files' ? 'is-active' : '' }}"
+                                        wire:click="selectInspectionFilesTab"
+                                        title="Archivos">
+                                    <span>Archivos</span>
+                                </button>
                             </div>
                         </div>
-                        {{--  <div class="col-span-12 md:col-span-3 rounded-xl px-4 py-3" style="background-color:#f3e8ff;border:1px solid #d8b4fe;">
-                            <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#6d28d9;">Ingreso</span>
-                        </div>
-                        <div class="col-span-12 md:col-span-3 rounded-xl px-4 py-3" style="background-color:#dcfce7;border:1px solid #86efac;">
-                            <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#059669;">Salida</span>
-                        </div> --}}
-                    </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-defaultborder bg-white px-4 py-3 shadow-sm">
-                        <div>
-                            <div class="font-semibold text-[0.95rem] text-defaulttextcolor">Preguntas e inspección</div>
-                            {{-- <div class="text-[0.78rem] text-[#8c9097]">Una sola categoría y subcategoría se muestran a la vez.</div> --}}
-                        </div>
-                    </div>
-
-                    @forelse ($questionnaireGroups as $group)
-                        <div class="rounded-2xl border border-defaultborder overflow-hidden bg-white shadow-sm">
-                            <div role="button" tabindex="0"
-                                 class="w-full text-left px-4 py-4 transition cursor-pointer"
-                                 @click="
-                                    const key = '{{ $group['key'] }}';
-                                    openQuestionGroup = openQuestionGroup === key ? null : key;
-                                    if (openQuestionGroup === key) {
-                                        clearTimeout(scrollTimer);
-                                        scrollTimer = setTimeout(() => {
-                                            if ($el && $el.isConnected && openQuestionGroup === key) {
-                                                const y = $el.getBoundingClientRect().top + window.scrollY - 96;
-                                                window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
-                                            }
-                                        }, 240);
-                                    }
-                                 "
-                                 @keydown.enter.prevent="
-                                    const key = '{{ $group['key'] }}';
-                                    openQuestionGroup = openQuestionGroup === key ? null : key;
-                                    if (openQuestionGroup === key) {
-                                        clearTimeout(scrollTimer);
-                                        scrollTimer = setTimeout(() => {
-                                            if ($el && $el.isConnected && openQuestionGroup === key) {
-                                                const y = $el.getBoundingClientRect().top + window.scrollY - 96;
-                                                window.scrollTo({ top: Math.max(y, 0), behavior: 'smooth' });
-                                            }
-                                        }, 240);
-                                    }
-                                 "
-                                 :style="openQuestionGroup === '{{ $group['key'] }}' ? 'background-color:#e9d5ff;' : 'background-color:#f8fafc;'">
-                                <div class="flex items-center justify-between gap-4">
-                                    <div>
-                                        <div class="font-semibold" style="color:#4c1d95;">Categoría: {{ $group['categoria'] }}</div>
-                                        <div class="mt-1 inline-flex items-center gap-2">
-                                            <span class="inline-flex items-center rounded-full px-3 py-1 text-[0.72rem] font-medium" style="background-color:#c4b5fd;color:#3b0764;">
-                                                Subcategoría: {{ $group['subcategoria'] }}
-                                            </span>
+                        @if ($uiInspectionTab === 'questions')
+                            <div class="border-b border-defaultborder px-4 py-3" style="background:#f3e8ff;">
+                                <div class="insp-subtab-row">
+                                    <div class="insp-subtab-scroll">
+                                        @forelse (($selectedCategory['subcategorias'] ?? []) as $subcategoria)
                                             <button type="button"
-                                                    class="ti-btn ti-btn-icon ti-btn-sm bg-primary text-white"
-                                                    title="Agregar pregunta adicional"
-                                                    wire:click="prepareCustomQuestionModal({{ $group['categoria_id'] }}, {{ $group['subcategoria_id'] }}, '{{ $group['key'] }}')"
-                                                    @click.stop>
-                                                <i class="ri-add-line"></i>
+                                                    class="insp-subtab {{ (int) $uiActiveQuestionSubcategoryId === (int) $subcategoria['id'] ? 'is-active' : '' }}"
+                                                    wire:click="selectQuestionSubcategory({{ $subcategoria['id'] }})"
+                                                    title="{{ $subcategoria['nombre'] }}">
+                                                <span>{{ $subcategoria['nombre'] }}</span>
+                                                @if (!empty($subcategoria['has_observaciones']))
+                                                    <span class="insp-subtab-alert animate-pulse" title="Subcategoría con observaciones">!</span>
+                                                @endif
                                             </button>
-                                        </div>
+                                        @empty
+                                            <span class="text-[0.84rem] text-[#6b7280]">Esta categoría no tiene subcategorías.</span>
+                                        @endforelse
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="badge bg-primary/10 text-primary">{{ count($group['responses']) }} preguntas</span>
-                                        <i class="ri-arrow-down-s-line text-[1.25rem] text-[#8c9097] transition-transform"
-                                           :class="openQuestionGroup === '{{ $group['key'] }}' ? 'rotate-180' : ''"></i>
-                                    </div>
+                                    <button type="button"
+                                            class="insp-subtab-add"
+                                            title="Agregar pregunta personalizada"
+                                            @disabled(!$selectedSubcategory || !$activeGroup)
+                                            wire:click="prepareCustomQuestionModal({{ (int) ($uiActiveQuestionCategoryId ?? 0) }}, {{ (int) ($uiActiveQuestionSubcategoryId ?? 0) }}, '{{ $activeGroup['key'] ?? '' }}')">
+                                        <i class="ri-add-line"></i>
+                                    </button>
                                 </div>
                             </div>
 
-                            <div x-show="openQuestionGroup === '{{ $group['key'] }}'" x-transition.opacity.duration.200ms class="border-t border-defaultborder overflow-x-auto">
-                                <div class="min-w-[980px]">
-                                <div class="grid grid-cols-12 bg-slate-50/80 border-b border-defaultborder">
-                                    <div class="col-span-5 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Pregunta</div>
-                                    <div class="col-span-2 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6d28d9]">Ingreso</div>
-                                    <div class="col-span-2 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#059669]">Salida</div>
-                                    <div class="col-span-2 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">N. observaciones</div>
-                                    <div class="col-span-1 px-3 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280] text-right">Acc.</div>
-                                </div>
-                                <div class="divide-y divide-defaultborder">
-                                    @foreach ($group['responses'] as $row)
-                                        <div class="grid grid-cols-12">
-                                            <div class="col-span-5 border-s-4 border-slate-200 bg-white px-4 py-5">
-                                                <div class="font-medium">{{ $row['enunciado'] }}</div>
-                                            </div>
-                                            <div class="col-span-2 px-4 py-5" style="background-color:#e9d5ff;">
-                                                @if ($row['ingreso_preguntar'])
-                                                    @if ($row['ingreso_tipo'] === 'select')
-                                                        <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
-                                                            <option value="">Seleccione...</option>
-                                                            @foreach ($row['ingreso_valores'] as $opt)
-                                                                <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    @elseif ($row['ingreso_tipo'] === 'radio')
-                                                        <div class="flex flex-wrap items-center gap-3 pt-2">
-                                                            @forelse ($row['ingreso_valores'] as $opt)
-                                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
-                                                                    <input type="radio"
-                                                                           class="form-check-input"
-                                                                           value="{{ $opt['value'] }}"
-                                                                           wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
-                                                                    <span>{{ $opt['label'] }}</span>
-                                                                </label>
-                                                            @empty
-                                                                <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
-                                                            @endforelse
-                                                        </div>
+                            <div class="p-0">
+                                @if ($activeGroup && !empty($activeGroup['responses']))
+                                    <div class="grid grid-cols-12 bg-slate-50/80 border-b border-defaultborder">
+                                        <div class="col-span-12 lg:col-span-4 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Pregunta</div>
+                                        <div class="col-span-12 lg:col-span-3 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6d28d9]">Ingreso</div>
+                                        <div class="col-span-12 lg:col-span-3 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#059669]">Salida</div>
+                                        <div class="col-span-6 lg:col-span-1 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Observaciones</div>
+                                        <div class="col-span-6 lg:col-span-1 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280] text-right">Acc.</div>
+                                    </div>
+                                    <div class="divide-y divide-defaultborder">
+                                        @foreach ($activeGroup['responses'] as $row)
+                                            <div class="grid grid-cols-12 {{ (int) $row['observaciones_count'] > 0 ? 'insp-row-has-observation' : '' }}">
+                                                <div class="col-span-12 lg:col-span-4 border-s-4 {{ (int) $row['observaciones_count'] > 0 ? 'border-s-danger bg-danger/5' : 'border-s-slate-200 bg-white' }} px-4 py-5">
+                                                    <div class="font-medium {{ (int) $row['observaciones_count'] > 0 ? 'text-danger' : '' }}">{{ $row['enunciado'] }}</div>
+                                                </div>
+                                                <div class="col-span-12 lg:col-span-3 px-4 py-5" style="background-color:#e9d5ff;">
+                                                    @if ($row['ingreso_preguntar'])
+                                                        @if ($row['ingreso_tipo'] === 'select')
+                                                            <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
+                                                                <option value="">Seleccione...</option>
+                                                                @foreach ($row['ingreso_valores'] as $opt)
+                                                                    <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        @elseif ($row['ingreso_tipo'] === 'radio')
+                                                            <div class="flex flex-wrap items-center gap-3 pt-2">
+                                                                @forelse ($row['ingreso_valores'] as $opt)
+                                                                    <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
+                                                                        <input type="radio" class="form-check-input" value="{{ $opt['value'] }}" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
+                                                                        <span>{{ $opt['label'] }}</span>
+                                                                    </label>
+                                                                @empty
+                                                                    <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
+                                                                @endforelse
+                                                            </div>
+                                                        @else
+                                                            <input type="text" class="form-control bg-white" placeholder="Respuesta ingreso" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
+                                                        @endif
                                                     @else
-                                                        <input type="text" class="form-control bg-white" placeholder="Respuesta ingreso" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
+                                                        <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
                                                     @endif
-                                                @else
-                                                    <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
-                                                @endif
-                                            </div>
-                                            <div class="col-span-2 px-4 py-5" style="background-color:#bbf7d0;">
-                                                @if ($row['salida_preguntar'])
-                                                    @if ($row['salida_tipo'] === 'select')
-                                                        <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
-                                                            <option value="">Seleccione...</option>
-                                                            @foreach ($row['salida_valores'] as $opt)
-                                                                <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    @elseif ($row['salida_tipo'] === 'radio')
-                                                        <div class="flex flex-wrap items-center gap-3 pt-2">
-                                                            @forelse ($row['salida_valores'] as $opt)
-                                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
-                                                                    <input type="radio"
-                                                                           class="form-check-input"
-                                                                           value="{{ $opt['value'] }}"
-                                                                           wire:model.live="responsesInput.{{ $row['id'] }}.salida">
-                                                                    <span>{{ $opt['label'] }}</span>
-                                                                </label>
-                                                            @empty
-                                                                <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
-                                                            @endforelse
-                                                        </div>
+                                                </div>
+                                                <div class="col-span-12 lg:col-span-3 px-4 py-5" style="background-color:#bbf7d0;">
+                                                    @if ($row['salida_preguntar'])
+                                                        @if ($row['salida_tipo'] === 'select')
+                                                            <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
+                                                                <option value="">Seleccione...</option>
+                                                                @foreach ($row['salida_valores'] as $opt)
+                                                                    <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        @elseif ($row['salida_tipo'] === 'radio')
+                                                            <div class="flex flex-wrap items-center gap-3 pt-2">
+                                                                @forelse ($row['salida_valores'] as $opt)
+                                                                    <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
+                                                                        <input type="radio" class="form-check-input" value="{{ $opt['value'] }}" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
+                                                                        <span>{{ $opt['label'] }}</span>
+                                                                    </label>
+                                                                @empty
+                                                                    <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
+                                                                @endforelse
+                                                            </div>
+                                                        @else
+                                                            <input type="text" class="form-control bg-white" placeholder="Respuesta salida" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
+                                                        @endif
                                                     @else
-                                                        <input type="text" class="form-control bg-white" placeholder="Respuesta salida" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
+                                                        <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
                                                     @endif
-                                                @else
-                                                    <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
-                                                @endif
-                                            </div>
-                                            <div class="col-span-2 px-4 py-5">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                                                </div>
+                                                <div class="col-span-6 lg:col-span-1 px-4 py-5">
+                                                    <span class="inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-sm font-semibold {{ (int) $row['observaciones_count'] > 0 ? 'bg-danger/10 text-danger' : 'bg-slate-100 text-slate-700' }}">
                                                         {{ $row['observaciones_count'] }}
                                                     </span>
                                                 </div>
-                                            </div>
-                                            <div class="col-span-1 px-3 py-5">
-                                                <div class="flex justify-end gap-2">
-                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full"
-                                                            wire:click="openObservationList({{ $row['id'] }})"
-                                                            title="Ver observaciones">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button type="button" class="ti-btn ti-btn-icon ti-btn-sm bg-warning text-white"
-                                                            wire:click="prepareObservationModal({{ $row['id'] }})"
-                                                            title="Registrar observación">
-                                                        <i class="ri-add-line"></i>
-                                                    </button>
+                                                <div class="col-span-6 lg:col-span-1 px-4 py-5">
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full" wire:click="openObservationList({{ $row['id'] }})" title="Ver observaciones">
+                                                            <i class="ri-eye-line"></i>
+                                                        </button>
+                                                        <button type="button" class="ti-btn ti-btn-icon ti-btn-sm bg-warning text-white" wire:click="prepareObservationModal({{ $row['id'] }})" title="Registrar observación">
+                                                            <i class="ri-add-line"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                                </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="p-4 text-[0.9rem] text-[#8c9097]">
+                                        No hay preguntas configuradas para la subcategoría seleccionada.
+                                    </div>
+                                @endif
                             </div>
-                        </div>
-                    @empty
-                        <div class="rounded-xl border border-dashed border-defaultborder p-4 text-[0.9rem] text-[#8c9097]">
-                            No hay preguntas configuradas para el equipo seleccionado o la inspección aún no fue iniciada.
-                        </div>
-                    @endforelse
+                        @endif
+                    </div>
 
+                    @if ($uiInspectionTab === 'files')
                     <div class="insp-upload-panel p-4 md:p-5 space-y-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
@@ -549,6 +529,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 </fieldset>
             </div>
         </div>
@@ -614,6 +595,42 @@
             </div>
         </div>
     </div>
+
+    <template x-teleport="body">
+    <div x-show="observationHistoryModal" x-cloak class="fixed inset-0 z-[9999]">
+        <div class="absolute inset-0 bg-slate-950/60" @click="observationHistoryModal = false"></div>
+        <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
+            <div class="w-full rounded-2xl bg-white shadow-xl dark:bg-[#0b1220] md:w-[40%] md:max-w-[40%]">
+                <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4">
+                    <h3 class="text-[15px] font-semibold">Observaciones registradas</h3>
+                    <button type="button" class="text-slate-500" @click="observationHistoryModal = false">
+                        <i class="ri-close-line text-[1.35rem] leading-none"></i>
+                    </button>
+                </div>
+                <div class="min-h-[25vh] max-h-[60vh] overflow-y-auto px-6 py-5 space-y-3">
+                    <template x-if="!observationHistoryRows.length">
+                        <div class="text-[0.9rem] text-[#8c9097]">No hay observaciones registradas para esta respuesta.</div>
+                    </template>
+
+                    <template x-for="item in observationHistoryRows" :key="item.id">
+                        <div class="rounded-xl border border-[#f3e8cf] bg-[#fffdf8] p-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="text-[13px] font-semibold text-[#d97706]" x-text="`${item.momento ?? 'Ambos'} · ${item.fecha ?? '-'}`"></div>
+                                <button type="button"
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-danger/10 text-danger hover:bg-danger/20"
+                                        title="Eliminar observación"
+                                        x-on:click="window.InspeccionesObs?.confirmDelete($wire, item.id)">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </div>
+                            <div class="mt-1 text-[14px] leading-[1.4] text-[#52525b]" x-text="item.descripcion ?? ''"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    </template>
 
     <template x-teleport="body">
     <div x-show="inspectionFilePreviewModal" x-cloak class="fixed inset-0 z-[9999]">
@@ -1059,39 +1076,25 @@
                         Swal.close();
                     }
                 },
-                openList(observations) {
-                    const currentScrollY = window.scrollY || window.pageYOffset || 0;
-                    const rows = Array.isArray(observations) ? observations : [];
-                    const html = rows.length
-                        ? rows.map((obs) => `
-                            <div style="border:1px solid #f3e8cf;background:#fffdf8;border-radius:10px;padding:12px 14px;margin-bottom:10px;text-align:left;">
-                                <div style="font-weight:600;color:#d97706;font-size:13px;">${obs.momento ?? 'Ambos'} · ${obs.fecha ?? '-'}</div>
-                                <div style="margin-top:6px;color:#52525b;font-size:14px;line-height:1.4;">${obs.descripcion ?? ''}</div>
-                            </div>
-                        `).join('')
-                        : '<div style="color:#8c9097;font-size:14px;">No hay observaciones registradas para esta respuesta.</div>';
-
-                    Swal.fire({
-                        title: 'Observaciones registradas',
-                        html,
-                        width: 760,
-                        showConfirmButton: false,
+                async confirmDelete(wire, observationId) {
+                    if (!wire || !observationId) return;
+                    const confirmation = await Swal.fire({
+                        title: 'Eliminar observación',
+                        text: '¿Deseas eliminar esta observación?',
+                        icon: 'warning',
+                        showCancelButton: true,
                         showCloseButton: true,
-                        focusConfirm: false,
-                        heightAuto: false,
-                        scrollbarPadding: false,
-                        willOpen: () => {
-                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
-                        },
-                        didOpen: () => {
-                            window.scrollTo({ top: currentScrollY, behavior: 'auto' });
-                        },
+                        confirmButtonText: 'Eliminar',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: false,
                         customClass: {
-                            popup: '!rounded-2xl !text-left',
-                            title: '!text-[15px] !font-semibold !mb-2',
-                            htmlContainer: '!p-0 !max-h-[60vh] !overflow-y-auto'
+                            actions: '!justify-end !w-full !px-6 !pb-4',
+                            closeButton: '!text-slate-500 !text-[22px] !font-normal'
                         }
                     });
+                    if (!confirmation.isConfirmed) return;
+
+                    await wire.deleteObservationFromModal(observationId);
                 },
                 openCreate(wire, detail) {
                     const currentScrollY = window.scrollY || window.pageYOffset || 0;
@@ -1117,11 +1120,13 @@
                                 </div>
                             </div>
                         `,
+                        position: 'top',
                         width: 620,
                         showCancelButton: true,
+                        showCloseButton: true,
                         confirmButtonText: 'Guardar observación',
                         cancelButtonText: 'Cancelar',
-                        reverseButtons: true,
+                        reverseButtons: false,
                         focusConfirm: false,
                         allowOutsideClick: () => !Swal.isLoading(),
                         heightAuto: false,
@@ -1135,6 +1140,12 @@
                             const descripcion = document.getElementById('insp-obs-descripcion');
                             if (momento) momento.value = defaultMomento;
                             if (descripcion) descripcion.value = defaultDescripcion;
+                        },
+                        customClass: {
+                            popup: '!rounded-2xl !text-left',
+                            title: '!text-[15px] !font-semibold',
+                            actions: '!justify-end !w-full !px-6 !pb-4',
+                            closeButton: '!text-slate-500 !text-[22px] !font-normal'
                         },
                         preConfirm: async () => {
                             const momentoEl = document.getElementById('insp-obs-momento');
