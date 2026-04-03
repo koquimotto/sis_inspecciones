@@ -21,16 +21,16 @@
     $puedeEditarInspeccion = filled($inspeccion) && (!$certificadoGenerado || $vigenciaCertificadoVencida);
 @endphp
 
-<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observationHistoryModal: false, observationHistoryRows: [], observationHistoryResponseId: null, hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="window.InspeccionesObs?.openCreate($wire, $event.detail || {})" x-on:observation-list-ready.window="observationHistoryRows = (($event.detail && $event.detail.observations) ? $event.detail.observations : []); observationHistoryResponseId = ($event.detail && $event.detail.responseId ? $event.detail.responseId : null); observationHistoryModal = true" x-on:observation-saved.window="window.InspeccionesObs?.close()" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false" class="insp-ui mt-5 space-y-5">
+<div x-data="{ step: @entangle('uiStep').live, started: @js($inspeccionIniciada), companyModal: @entangle('companyModal').live, companyStep: @entangle('companyStep').live, equipmentModal: @entangle('equipmentModal').live, inspectionDetailModal: @entangle('inspectionDetailModal').live, inspectionFilePreviewModal: @entangle('inspectionFilePreviewModal').live, customQuestionModal: false, observationHistoryModal: false, observationHistoryRows: [], observationHistoryResponseId: null, observedParamsModal: false, observedParamsRows: [], hasObservations: @js($tieneObservaciones), inspectionFinalized: @js($inspeccionFinalizadaInicial), remediationDueDate: '', certificateGenerated: @js((bool) ($inspeccion?->certificado_generado) && !$tieneObservaciones) }" x-on:inspection-reset.window="started = false; step = 1; hasObservations = false; inspectionFinalized = false; remediationDueDate = ''; certificateGenerated = false" x-on:inspection-state.window="started = !!($event.detail.started ?? started); inspectionFinalized = !!($event.detail.inspectionFinalized ?? inspectionFinalized); if (($event.detail.step ?? null) !== null) step = $event.detail.step;" x-on:observation-form-ready.window="window.InspeccionesObs?.openCreate($wire, $event.detail || {})" x-on:observation-list-ready.window="observationHistoryRows = (($event.detail && $event.detail.observations) ? $event.detail.observations : []); observationHistoryResponseId = ($event.detail && $event.detail.responseId ? $event.detail.responseId : null); observationHistoryModal = true" x-on:observed-parameters-ready.window="observedParamsRows = (($event.detail && $event.detail.items) ? $event.detail.items : []); observedParamsModal = true" x-on:observation-saved.window="window.InspeccionesObs?.close()" x-on:custom-question-ready.window="customQuestionModal = true" x-on:custom-question-saved.window="customQuestionModal = false" class="insp-ui mt-5 space-y-5">
     @include('livewire.inspecciones.partials.ui-theme')
     <template x-teleport="body">
         <div wire:loading.delay
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
              class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
             <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
         <div wire:loading.delay.shortest
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,openInspectionFilePreview,deleteInspectionFile"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
              class="fixed right-4 top-3 z-[20002]">
             <div class="insp-loading-pill">
                 <span class="insp-spinner"></span>
@@ -501,23 +501,48 @@
                                 <div class="h-5 w-[3px] rounded-full bg-primary"></div>
                                 <div class="text-lg font-semibold">Archivos cargados</div>
                             </div>
+                            @if (!empty($inspectionFiles))
+                                <div class="mb-2 grid grid-cols-12 gap-3 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">
+                                    <div class="col-span-12 lg:col-span-7">Archivo</div>
+                                    <div class="col-span-12 lg:col-span-3">Mostrar en certificado</div>
+                                    <div class="col-span-12 lg:col-span-2 text-right">Acciones</div>
+                                </div>
+                            @endif
                             <div class="space-y-2">
                                 @forelse ($inspectionFiles as $file)
                                     <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                                        <div class="flex flex-wrap items-center justify-between gap-3">
-                                            <div>
+                                        <div class="grid grid-cols-12 items-center gap-3">
+                                            <div class="col-span-12 lg:col-span-7">
                                                 <div class="font-medium">{{ $file['descripcion'] }}</div>
                                                 <div class="text-[0.8rem] text-[#8c9097]">
-                                                    {{ strtoupper($file['tipo']) }} · {{ $file['fecha'] }} · {{ $file['mostrar_certificado'] ? 'Mostrar en certificado' : 'No mostrar en certificado' }}
+                                                    {{ strtoupper($file['tipo']) }} · {{ $file['fecha'] }}
                                                 </div>
                                             </div>
-                                            <div class="flex items-center gap-2">
-                                                <button type="button" class="ti-btn ti-btn-sm ti-btn-info-full" wire:click="openInspectionFilePreview({{ $file['id'] }})" @click="inspectionFilePreviewModal = true">
-                                                    <i class="ri-eye-line me-1"></i>Visualizar
-                                                </button>
-                                                <button type="button" class="ti-btn ti-btn-sm ti-btn-danger-full" x-on:click="if(confirm('¿Deseas eliminar este archivo?')) { $wire.deleteInspectionFile({{ $file['id'] }}) }">
-                                                    <i class="ri-delete-bin-line me-1"></i>Eliminar
-                                                </button>
+                                            <div class="col-span-12 lg:col-span-3">
+                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-[#475569]">
+                                                    <input type="checkbox"
+                                                           class="form-check-input"
+                                                           @checked($file['mostrar_certificado'])
+                                                           wire:change="toggleInspectionFileCertificate({{ $file['id'] }}, $event.target.checked)">
+                                                    <span>Mostrar en certificado</span>
+                                                </label>
+                                            </div>
+                                            <div class="col-span-12 lg:col-span-2">
+                                                <div class="flex items-center justify-start gap-2 lg:justify-end">
+                                                    <button type="button"
+                                                            class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full"
+                                                            wire:click="openInspectionFilePreview({{ $file['id'] }})"
+                                                            @click="inspectionFilePreviewModal = true"
+                                                            title="Visualizar archivo">
+                                                        <i class="ri-eye-line"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="ti-btn ti-btn-icon ti-btn-sm ti-btn-danger-full"
+                                                            x-on:click="if(confirm('¿Deseas eliminar este archivo?')) { $wire.deleteInspectionFile({{ $file['id'] }}) }"
+                                                            title="Eliminar archivo">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -542,61 +567,157 @@
                     <div class="box-header"><div class="box-title !mb-0">Generación de certificado</div></div>
                     <div class="box-body space-y-4">
                         <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 md:col-span-4"><div class="rounded-2xl bg-danger/5 p-4"><div class="text-[0.75rem] uppercase tracking-[0.16em] text-danger">Observaciones</div><div class="mt-2 text-3xl font-semibold">{{ $totalObservaciones }}</div></div></div>
-                            <div class="col-span-12 md:col-span-4"><div class="rounded-2xl bg-success/5 p-4"><div class="text-[0.75rem] uppercase tracking-[0.16em] text-success">Estado</div><div class="mt-2 text-xl font-semibold" x-text="inspectionFinalized ? (hasObservations ? 'Con observaciones' : 'Apto para emitir') : 'Inspección en proceso'"></div></div></div>
-                            <div class="col-span-12 md:col-span-4"><div class="rounded-2xl bg-info/5 p-4"><div class="text-[0.75rem] uppercase tracking-[0.16em] text-info">Certificado</div><div class="mt-2 text-xl font-semibold" x-text="certificateGenerated ? 'Emitido' : 'No emitido'"></div></div></div>
-                        </div>
-                        <div class="rounded-2xl border border-defaultborder p-4">
-                            <div class="grid grid-cols-12 gap-3 items-end">
-                                <div class="col-span-12 md:col-span-7">
-                                    <label class="form-label">Fecha plazo para subsanar observaciones</label>
-                                    <input type="date" class="form-control" x-model="remediationDueDate" :disabled="inspectionFinalized">
-                                </div>
-                                <div class="col-span-12 md:col-span-5">
-                                    <template x-if="!inspectionFinalized">
-                                        <button type="button" class="ti-btn w-full bg-primary text-white" @click="inspectionFinalized = true">
-                                            <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
-                                        </button>
-                                    </template>
-                                    <template x-if="inspectionFinalized">
-                                        <button type="button" class="ti-btn w-full bg-success text-white disabled:opacity-60 disabled:cursor-not-allowed" :disabled="hasObservations" @click="if(!hasObservations){ certificateGenerated = true }" :title="hasObservations ? 'No se puede generar certificado mientras existan observaciones' : 'Generar certificado'">
-                                            <i class="ri-award-line me-1"></i>Generar certificado
-                                        </button>
-                                    </template>
+                            <div class="col-span-12 md:col-span-7">
+                                <button type="button" class="w-full rounded-2xl bg-danger/5 p-4 text-left transition hover:bg-danger/10" wire:click="openObservedParametersSummary">
+                                    <div class="text-[0.75rem] uppercase tracking-[0.16em] text-danger">Observaciones</div>
+                                    <div class="mt-2 text-3xl font-semibold">{{ $observedParametersCount }}</div>
+                                    <div class="text-[0.9rem] font-medium">Parámetros observados</div>
+                                </button>
+                            </div>
+                            <div class="col-span-12 md:col-span-5">
+                                <div class="rounded-2xl bg-success/5 p-4">
+                                    <div class="text-[0.75rem] uppercase tracking-[0.16em] text-success">Estado</div>
+                                    <div class="mt-2 text-xl font-semibold">{{ $certificateStatusLabel }}</div>
                                 </div>
                             </div>
-                            <p class="mt-3 mb-0 text-[0.92rem] text-[#8c9097]">La vista previa ocupa mas ancho y los botones principales se concentran debajo del documento para un cierre mas claro.</p>
                         </div>
+
+                        <div class="rounded-2xl border border-defaultborder p-4">
+                            @if ($inspectionFinalized)
+                                <div class="text-[0.93rem]">
+                                    Inspección finalizada {{ $finalizedAtLabel ? 'el ' . $finalizedAtLabel : '' }} ·
+                                    <button type="button" class="font-semibold text-info hover:underline" wire:click="openDetailReportPreview">descargar informe</button>
+                                </div>
+                                <div class="mt-3 flex justify-end">
+                                    <button type="button" class="ti-btn bg-danger text-white" wire:click="enableInspectionEdition">
+                                        <i class="ri-edit-line me-1"></i>Editar
+                                    </button>
+                                </div>
+                            @else
+                                @if ($observedParametersCount > 0)
+                                    <p class="mb-3 text-[0.92rem] text-[#374151]">
+                                        El certificado no se puede generar debido a que hay {{ $observedParametersCount }} parámetros observados.
+                                    </p>
+                                @else
+                                    <p class="mb-3 text-[0.92rem] text-[#374151]">
+                                        Para generar el certificado debes finalizar la inspección.
+                                    </p>
+                                @endif
+
+                                <div class="grid grid-cols-12 gap-3 items-end">
+                                    @if ($observedParametersCount > 0)
+                                        <div class="col-span-12 md:col-span-7">
+                                            <label class="form-label">Fecha plazo para subsanar observaciones</label>
+                                            <input type="date" class="form-control" wire:model="remediationDueDate">
+                                            @error('remediationDueDate') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div class="col-span-12 md:col-span-5">
+                                            <button type="button" class="ti-btn w-full bg-primary text-white" wire:click="finalizeInspection">
+                                                <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="col-span-12">
+                                            <button type="button" class="ti-btn w-full bg-primary text-white" wire:click="finalizeInspection">
+                                                <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+
+                        @if ($canGenerateCertificate)
+                            <button type="button" class="ti-btn w-full bg-success text-white" wire:click="generateInspectionCertificate">
+                                <i class="ri-award-line me-1"></i>Generar certificado de inspección
+                            </button>
+                        @elseif ($certificateGenerated)
+                            <div class="rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-success">
+                                Certificado generado correctamente.
+                            </div>
+                        @endif
+
+                        @if ($canEditInspectionFromCertificate)
+                            <p class="mb-0 text-[0.82rem] text-warning">
+                                Si finalizas nuevamente la inspección, el certificado previo se anulará para permitir edición.
+                            </p>
+                        @endif
+                        <p class="mb-0 text-[0.82rem] text-[#8c9097]">
+                            Siempre que se genere un PDF se registrará automáticamente en archivos de inspección.
+                        </p>
                     </div>
                 </div>
             </div>
             <div class="col-span-12 xl:col-span-7">
                 <div class="box h-full">
-                    <div class="box-header"><div class="box-title !mb-0">Vista previa</div></div>
+                    <div class="box-header">
+                        <div class="box-title !mb-0">
+                            Certificado de inspección
+                            @if ($certificateGenerated)
+                                <span class="text-[0.9rem] font-normal text-success">(generado {{ $finalizedAtLabel ? 'el ' . $finalizedAtLabel : '' }})</span>
+                            @else
+                                <span class="text-[0.9rem] font-normal text-[#8c9097]">(No emitido)</span>
+                            @endif
+                        </div>
+                    </div>
                     <div class="box-body space-y-4">
-                        <div class="rounded-2xl border border-dashed border-defaultborder p-8 text-center min-h-[360px] flex flex-col justify-center">
-                            <div class="text-[0.75rem] uppercase tracking-[0.18em] text-[#8c9097]">Documento</div>
-                            <div class="mt-3 text-lg font-semibold">Certificado de inspección</div>
-                            <div class="mt-2 text-[0.9rem] text-[#8c9097]">Aqui luego se podra mostrar un resumen previo del certificado antes de emitirlo.</div>
-                        </div>
-                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-defaultborder pt-4">
-                            <template x-if="certificateGenerated">
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <button type="button" class="ti-btn bg-primary text-white"><i class="ri-eye-line me-1"></i>Ver</button>
-                                    <button type="button" class="ti-btn bg-danger text-white" @click="certificateGenerated = false"><i class="ri-close-circle-line me-1"></i>Anular certificado</button>
-                                </div>
-                            </template>
-                        </div>
-                        <p x-show="inspectionFinalized && hasObservations && !certificateGenerated" class="text-[0.82rem] text-danger mb-0">
-                            No se puede generar certificado mientras existan observaciones pendientes.
-                        </p>
+                        @if ($certificatePdfUrl)
+                            <iframe src="{{ $certificatePdfUrl }}" class="h-[68vh] w-full rounded-xl border border-defaultborder"></iframe>
+                        @else
+                            <div class="rounded-2xl border border-dashed border-defaultborder bg-slate-200/65 p-8 text-center min-h-[68vh] flex flex-col justify-center">
+                                <div class="text-[0.75rem] uppercase tracking-[0.18em] text-[#8c9097]">Documento</div>
+                                <div class="mt-3 text-lg font-semibold text-[#334155]">Certificado de inspección</div>
+                                <div class="mt-2 text-[0.9rem] text-[#8c9097]">Aquí se mostrará la previsualización cuando se genere el certificado.</div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
+<template x-teleport="body">
+    <div x-show="observedParamsModal" x-cloak class="fixed inset-0 z-[9999]">
+        <div class="absolute inset-0 bg-slate-950/60" @click="observedParamsModal = false"></div>
+        <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
+            <div class="w-full rounded-2xl bg-white shadow-xl dark:bg-[#0b1220] md:w-1/2 lg:w-5/12">
+                <div class="flex items-center justify-between border-b border-defaultborder px-6 py-4">
+                    <h3 class="text-[15px] font-semibold">Parámetros observados</h3>
+                    <button type="button" class="text-slate-500" @click="observedParamsModal = false">
+                        <i class="ri-close-line text-[1.35rem] leading-none"></i>
+                    </button>
+                </div>
+                <div class="min-h-[25vh] max-h-[62vh] overflow-y-auto px-6 py-5 space-y-3">
+                    <template x-if="!observedParamsRows.length">
+                        <div class="text-[0.9rem] text-[#8c9097]">No hay observaciones registradas.</div>
+                    </template>
+                    <template x-for="(row, idx) in observedParamsRows" :key="idx">
+                        <div class="rounded-xl border border-defaultborder bg-slate-50/60 p-3">
+                            <div class="mb-2 text-[0.9rem] font-semibold text-[#334155]" x-text="row.parametro"></div>
+                            <div class="space-y-2">
+                                <template x-for="(obs, oIdx) in (row.observaciones || [])" :key="oIdx">
+                                    <div class="rounded-lg border border-[#f3e8cf] bg-[#fffdf8] px-3 py-2">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="text-[0.78rem] font-semibold text-[#d97706]" x-text="`${obs.momento ?? 'Ambos'} · ${obs.fecha ?? '-'}`"></div>
+                                            <button type="button"
+                                                    class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-danger/10 text-danger hover:bg-danger/20"
+                                                    title="Eliminar observación"
+                                                    x-on:click="window.InspeccionesObs?.confirmDelete($wire, obs.id, true)">
+                                                <i class="ri-delete-bin-line text-[0.8rem]"></i>
+                                            </button>
+                                        </div>
+                                        <div class="mt-1 text-[0.88rem] text-[#475569]" x-text="obs.descripcion ?? ''"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
 
-    <template x-teleport="body">
+<template x-teleport="body">
     <div x-show="observationHistoryModal" x-cloak class="fixed inset-0 z-[9999]">
         <div class="absolute inset-0 bg-slate-950/60" @click="observationHistoryModal = false"></div>
         <div class="relative flex min-h-full items-start justify-center p-4 pt-10 pb-8">
@@ -1076,7 +1197,7 @@
                         Swal.close();
                     }
                 },
-                async confirmDelete(wire, observationId) {
+                async confirmDelete(wire, observationId, refreshObservedParams = false) {
                     if (!wire || !observationId) return;
                     const confirmation = await Swal.fire({
                         title: 'Eliminar observación',
@@ -1094,7 +1215,10 @@
                     });
                     if (!confirmation.isConfirmed) return;
 
-                    await wire.deleteObservationFromModal(observationId);
+                    await wire.deleteObservationFromModal(observationId, !refreshObservedParams);
+                    if (refreshObservedParams) {
+                        await wire.openObservedParametersSummary();
+                    }
                 },
                 openCreate(wire, detail) {
                     const currentScrollY = window.scrollY || window.pageYOffset || 0;
@@ -1177,3 +1301,4 @@
         </script>
     @endonce
 </div>
+

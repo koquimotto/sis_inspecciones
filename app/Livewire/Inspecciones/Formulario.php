@@ -3,6 +3,7 @@
 namespace App\Livewire\Inspecciones;
 
 use App\Models\Categoria;
+use App\Models\Certificado;
 use App\Models\CuestionarioPregunta;
 use App\Models\CuestionarioRespuesta;
 use App\Models\CuestionarioRespuestaObservacion;
@@ -18,6 +19,7 @@ use App\Models\Modelo;
 use App\Models\Persona;
 use App\Models\Servicio;
 use App\Models\Tipo;
+use App\Models\TipoCertificado;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -92,6 +94,17 @@ class Formulario extends Component
     public string $uiInspectionTab = 'questions';
     public array $customQuestionForm = [];
     public ?string $customQuestionGroupKey = null;
+    public int $observedParametersCount = 0;
+    public string $certificateStatusLabel = 'en proceso';
+    public bool $inspectionFinalized = false;
+    public bool $certificateGenerated = false;
+    public bool $canFinalizeInspection = false;
+    public bool $canGenerateCertificate = false;
+    public bool $canEditInspectionFromCertificate = false;
+    public ?string $finalizedAtLabel = null;
+    public ?string $certificatePdfUrl = null;
+    public ?string $reportPdfUrl = null;
+    public ?string $remediationDueDate = null;
 
     public function mount(?Inspeccion $inspeccion = null): void
     {
@@ -961,10 +974,25 @@ class Formulario extends Component
 
     public function enableInspectionEdition(): void
     {
-        if (!$this->selectedEmpresaEquipoId) {
+        if (!$this->selectedEmpresaEquipoId || !$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
             return;
         }
 
+        Inspeccion::query()
+            ->whereKey($this->currentInspeccionId)
+            ->update([
+                'estado_inspeccion' => 'en_inspeccion',
+                'updated_by' => Auth::id(),
+            ]);
+
+        DetalleInspeccion::query()
+            ->whereKey($this->currentDetalleInspeccionId)
+            ->update([
+                'inspeccion_estado' => 'en_inspeccion',
+                'updated_by' => Auth::id(),
+            ]);
+
+        $this->refreshInspectionContext();
         $this->dispatch('inspection-state', started: true, inspectionFinalized: false, step: 2);
         $this->dispatch('swal', type: 'info', title: 'Edicion habilitada', text: 'Puedes continuar con la edicion de la inspeccion.', toast: true, timer: 2400);
     }
@@ -1072,7 +1100,7 @@ class Formulario extends Component
         $this->dispatch('swal', type: 'success', title: 'Observacion registrada', text: 'La observacion se guardo correctamente.', toast: true, timer: 2200);
     }
 
-    public function deleteObservationFromModal(int $observationId): void
+    public function deleteObservationFromModal(int $observationId, bool $dispatchObservationList = true): void
     {
         $observation = CuestionarioRespuestaObservacion::query()
             ->whereKey($observationId)
@@ -1095,11 +1123,14 @@ class Formulario extends Component
             $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
         }
 
-        $this->dispatch(
-            'observation-list-ready',
-            observations: $this->buildObservationList($responseId),
-            responseId: $responseId
-        );
+        if ($dispatchObservationList) {
+            $this->dispatch(
+                'observation-list-ready',
+                observations: $this->buildObservationList($responseId),
+                responseId: $responseId
+            );
+        }
+        $this->refreshCertificateState();
         $this->dispatch('swal', type: 'success', title: 'Observacion eliminada', text: 'La observacion fue eliminada correctamente.', toast: true, timer: 1800);
     }
 
@@ -1270,6 +1301,201 @@ class Formulario extends Component
 
         $this->loadInspectionFiles($this->currentInspeccionId);
         $this->dispatch('swal', type: 'success', title: 'Archivo eliminado', text: 'El archivo se eliminó correctamente.', toast: true, timer: 2200);
+    }
+
+    public function toggleInspectionFileCertificate(int $archivoId, $mostrar): void
+    {
+        $archivo = InspeccionArchivoEquipo::query()
+            ->where('inspeccion_id', $this->currentInspeccionId)
+            ->find($archivoId);
+
+        if (!$archivo) {
+            return;
+        }
+
+        $archivo->update([
+            'mostrar_certificado' => filter_var($mostrar, FILTER_VALIDATE_BOOL),
+            'updated_by' => Auth::id(),
+        ]);
+
+        $this->loadInspectionFiles($this->currentInspeccionId);
+    }
+
+    public function finalizeInspection(): void
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $this->refreshCertificateState();
+        if ($this->observedParametersCount > 0 && !$this->remediationDueDate) {
+            $this->addError('remediationDueDate', 'Debes indicar la fecha plazo para subsanar observaciones.');
+            return;
+        }
+
+        DB::transaction(function (): void {
+            $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+            $detalle = DetalleInspeccion::query()->findOrFail($this->currentDetalleInspeccionId);
+
+            if ($inspeccion->certificado_generado) {
+                Certificado::query()
+                    ->where('inspeccion_id', $inspeccion->id)
+                    ->where('anulado', 0)
+                    ->update([
+                        'anulado' => 1,
+                        'motivo_anulacion' => 'Anulado por edición de inspección',
+                        'updated_by' => Auth::id(),
+                    ]);
+
+                $inspeccion->update([
+                    'certificado_generado' => 0,
+                    'updated_by' => Auth::id(),
+                ]);
+            }
+
+            $newState = $this->observedParametersCount > 0 ? 'observado' : 'aprobado';
+            $detalle->update([
+                'inspeccion_estado' => $newState,
+                'correcion_vigencia_fecha' => $this->observedParametersCount > 0 ? $this->remediationDueDate : null,
+                'inspeccion_fecha' => now(),
+                'updated_by' => Auth::id(),
+            ]);
+
+            $inspeccion->update([
+                'estado_inspeccion' => $newState,
+                'fecha_salida' => now()->toDateString(),
+                'updated_by' => Auth::id(),
+            ]);
+        });
+
+        $this->ensureDetailReportPdf();
+        $this->refreshInspectionContext();
+        $this->refreshCertificateState();
+        $this->dispatch('swal', type: 'success', title: 'Inspección finalizada', text: 'La inspección se finalizó correctamente.');
+    }
+
+    public function generateInspectionCertificate(): void
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $this->refreshCertificateState();
+        if ($this->observedParametersCount > 0) {
+            $this->dispatch('swal', type: 'warning', title: 'No disponible', text: 'No se puede generar certificado mientras existan parámetros observados.');
+            return;
+        }
+
+        DB::transaction(function (): void {
+            $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+            $detalle = DetalleInspeccion::query()->findOrFail($this->currentDetalleInspeccionId);
+            $tipoCertificadoId = $this->resolveTipoCertificadoId();
+
+            $pdfRelative = $this->generateInspectionPdf('CERTIFICADO DE INSPECCIÓN', 'certificado');
+            $numero = $this->nextCertificateNumber();
+
+            Certificado::query()->create([
+                'tipo_certificado_id' => $tipoCertificadoId,
+                'inspeccion_id' => (int) $inspeccion->id,
+                'detalle_inspeccion_id' => (int) $detalle->id,
+                'numero' => $numero,
+                'fecha_emision' => now()->toDateString(),
+                'fecha_vencimiento' => now()->addYear()->toDateString(),
+                'pdf_ruta' => $pdfRelative,
+                'anulado' => 0,
+                'estado' => 1,
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
+
+            $inspeccion->update([
+                'certificado_generado' => 1,
+                'estado_inspeccion' => 'aprobado',
+                'updated_by' => Auth::id(),
+            ]);
+
+            $detalle->update([
+                'inspeccion_estado' => 'aprobado',
+                'updated_by' => Auth::id(),
+            ]);
+
+            InspeccionArchivoEquipo::query()->create([
+                'inspeccion_id' => (int) $inspeccion->id,
+                'archivo_descripcion' => 'Certificado de inspección ' . $numero,
+                'archivo_autogenerado' => 1,
+                'archivo_tipo' => 'pdf',
+                'archivo_ruta' => $pdfRelative,
+                'archivo_origen' => 'certificado',
+                'mostrar_certificado' => 1,
+                'estado' => 1,
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
+        });
+
+        $this->refreshInspectionContext();
+        $this->refreshCertificateState();
+        $this->dispatch('swal', type: 'success', title: 'Certificado generado', text: 'Se generó y registró el certificado correctamente.');
+    }
+
+    public function openDetailReportPreview(): void
+    {
+        $relative = $this->ensureDetailReportPdf();
+        if (!$relative) {
+            return;
+        }
+
+        $this->inspectionFilePreview = [
+            'id' => 0,
+            'descripcion' => 'Reporte detallado de inspección',
+            'tipo' => 'pdf',
+            'url' => asset($relative),
+            'origen' => 'reporte_detallado',
+            'mostrar_certificado' => false,
+        ];
+        $this->inspectionFilePreviewModal = true;
+    }
+
+    public function openObservedParametersSummary(): void
+    {
+        if (!$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $items = CuestionarioRespuesta::query()
+            ->with([
+                'pregunta:id,pregunta_enunciado',
+                'observacionesAdjuntas' => fn ($q) => $q->latest('id'),
+            ])
+            ->where('detalle_inspeccion_id', $this->currentDetalleInspeccionId)
+            ->whereHas('observacionesAdjuntas')
+            ->orderBy('id')
+            ->get()
+            ->map(function (CuestionarioRespuesta $respuesta): array {
+                $parametro = (string) ($respuesta->pregunta?->pregunta_enunciado ?: $respuesta->cuestionario_pregunta_personalizada ?: 'Parámetro');
+                $observaciones = $respuesta->observacionesAdjuntas->map(function (CuestionarioRespuestaObservacion $obs): array {
+                    return [
+                        'id' => (int) $obs->id,
+                        'momento' => match ((string) $obs->momento) {
+                            'ingreso' => 'Ingreso',
+                            'salida' => 'Salida',
+                            default => 'Ambos',
+                        },
+                        'descripcion' => (string) $obs->descripcion,
+                        'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
+                    ];
+                })->values()->all();
+
+                return [
+                    'parametro' => $parametro,
+                    'observaciones' => $observaciones,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $this->dispatch('observed-parameters-ready', items: $items);
+        $this->skipRender();
     }
 
     private function saveCompanyBaseData(): bool
@@ -1829,6 +2055,180 @@ class Formulario extends Component
         return 1;
     }
 
+    private function refreshCertificateState(): void
+    {
+        $this->observedParametersCount = 0;
+        $this->certificateStatusLabel = 'en proceso';
+        $this->inspectionFinalized = false;
+        $this->certificateGenerated = false;
+        $this->canFinalizeInspection = false;
+        $this->canGenerateCertificate = false;
+        $this->canEditInspectionFromCertificate = false;
+        $this->finalizedAtLabel = null;
+        $this->certificatePdfUrl = null;
+        $this->reportPdfUrl = null;
+        $this->remediationDueDate = null;
+
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $inspeccion = Inspeccion::query()
+            ->with(['ultimoDetalle', 'certificados' => fn ($q) => $q->orderByDesc('id')])
+            ->find($this->currentInspeccionId);
+
+        if (!$inspeccion) {
+            return;
+        }
+
+        $detalle = DetalleInspeccion::query()->find($this->currentDetalleInspeccionId);
+        if (!$detalle) {
+            return;
+        }
+
+        $this->observedParametersCount = CuestionarioRespuesta::query()
+            ->where('detalle_inspeccion_id', $detalle->id)
+            ->whereHas('observacionesAdjuntas')
+            ->count();
+
+        $state = (string) $detalle->inspeccion_estado;
+        $this->certificateStatusLabel = match ($state) {
+            'aprobado' => 'finalizado',
+            'observado', 'subsanacion' => 'observado',
+            'anulado' => 'anulado',
+            'rechazado' => 'rechazado',
+            default => 'en proceso',
+        };
+
+        $this->inspectionFinalized = in_array($state, ['aprobado', 'observado', 'subsanacion', 'rechazado', 'anulado'], true);
+        $this->canFinalizeInspection = in_array($state, ['en_inspeccion', 'borrador', 'observado', 'subsanacion', 'aprobado'], true);
+        $this->canEditInspectionFromCertificate = (bool) $inspeccion->certificado_generado;
+
+        $latestCert = Certificado::query()
+            ->where('inspeccion_id', $inspeccion->id)
+            ->where('anulado', 0)
+            ->latest('id')
+            ->first();
+
+        $this->certificateGenerated = (bool) $inspeccion->certificado_generado && (bool) $latestCert;
+        $this->canGenerateCertificate = $this->inspectionFinalized && $this->observedParametersCount === 0 && !$this->certificateGenerated;
+        $this->finalizedAtLabel = $detalle->inspeccion_fecha ? Carbon::parse($detalle->inspeccion_fecha)->format('d/m/Y H:i') : null;
+        $this->certificatePdfUrl = $latestCert?->pdf_ruta ? asset((string) $latestCert->pdf_ruta) : null;
+
+        if ($this->remediationDueDate === null && $detalle->correcion_vigencia_fecha) {
+            $this->remediationDueDate = Carbon::parse($detalle->correcion_vigencia_fecha)->toDateString();
+        }
+
+        $latestReport = InspeccionArchivoEquipo::query()
+            ->where('inspeccion_id', $inspeccion->id)
+            ->where('archivo_origen', 'reporte_detallado')
+            ->latest('id')
+            ->first();
+        $this->reportPdfUrl = $latestReport?->archivo_ruta ? asset((string) $latestReport->archivo_ruta) : null;
+    }
+
+    private function resolveTipoCertificadoId(): int
+    {
+        $tipo = TipoCertificado::query()->where('estado', 1)->orderBy('id')->first();
+        if ($tipo) {
+            return (int) $tipo->id;
+        }
+
+        $tipo = TipoCertificado::query()->create([
+            'tipo_certificado' => 'INSPECCION',
+            'estado' => 1,
+            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
+        ]);
+
+        return (int) $tipo->id;
+    }
+
+    private function nextCertificateNumber(): string
+    {
+        $year = now()->format('Y');
+        $next = ((int) (Certificado::query()->max('id') ?? 0)) + 1;
+        return sprintf('CERT-%s-%06d', $year, $next);
+    }
+
+    private function ensureDetailReportPdf(): ?string
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return null;
+        }
+
+        $relative = $this->generateInspectionPdf('REPORTE DETALLADO', 'reporte_detallado');
+        InspeccionArchivoEquipo::query()->create([
+            'inspeccion_id' => (int) $this->currentInspeccionId,
+            'archivo_descripcion' => 'Reporte detallado inspección #' . $this->resolveInspectionNumber(),
+            'archivo_autogenerado' => 1,
+            'archivo_tipo' => 'pdf',
+            'archivo_ruta' => $relative,
+            'archivo_origen' => 'reporte_detallado',
+            'mostrar_certificado' => 0,
+            'estado' => 1,
+            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
+        ]);
+
+        return $relative;
+    }
+
+    private function generateInspectionPdf(string $titleText, string $prefix): string
+    {
+        $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+        $empresaEquipo = $inspeccion->empresaEquipo;
+        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
+        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
+        $numeroInspeccion = (string) $this->resolveInspectionNumber();
+
+        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
+        if ($folder === '') {
+            $folder = 'INSPECCION';
+        }
+
+        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetDirectory = public_path($targetRelativePath);
+        if (!File::exists($targetDirectory)) {
+            File::makeDirectory($targetDirectory, 0755, true);
+        }
+
+        $fileName = now()->format('YmdHis') . '_' . $prefix . '.pdf';
+        $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
+        File::put($absoluteFile, $this->buildSimplePdf($titleText));
+
+        return $targetRelativePath . '/' . $fileName;
+    }
+
+    private function buildSimplePdf(string $text): string
+    {
+        $text = strtoupper(trim($text));
+        $stream = "BT /F1 28 Tf 160 430 Td (" . str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text) . ") Tj ET";
+        $objects = [];
+        $objects[] = "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj";
+        $objects[] = "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj";
+        $objects[] = "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj";
+        $objects[] = "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj";
+        $objects[] = "5 0 obj << /Length " . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj";
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object . "\n";
+        }
+
+        $xrefPosition = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= count($objects); $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefPosition . "\n%%EOF";
+        return $pdf;
+    }
+
     private function loadInspectionFiles(?int $inspeccionId): void
     {
         $this->inspectionFiles = [];
@@ -1880,6 +2280,7 @@ class Formulario extends Component
             $this->inspectionFiles = [];
             $this->inspectionFilePreviewModal = false;
             $this->inspectionFilePreview = [];
+            $this->refreshCertificateState();
             $this->dispatch('inspection-state', started: false, inspectionFinalized: false);
             return;
         }
@@ -1985,6 +2386,7 @@ class Formulario extends Component
             $this->loadQuestionnaireForDetalle(null);
         }
         $this->loadInspectionFiles($this->currentInspeccionId);
+        $this->refreshCertificateState();
 
         $this->dispatch(
             'inspection-state',
