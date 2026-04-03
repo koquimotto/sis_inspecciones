@@ -11,7 +11,7 @@
     $tieneObservaciones = $totalObservaciones > 0;
     $esBorrador = $estado === 'borrador';
     $fueObservadaAntes = in_array($estado, ['observado', 'subsanacion'], true);
-    $inspeccionFinalizadaInicial = in_array($estado, ['observado', 'subsanacion', 'aprobado', 'rechazado', 'anulado'], true);
+    $inspeccionFinalizadaInicial = in_array($estado, ['observado', 'aprobado', 'rechazado', 'anulado'], true);
     $numeroInspeccion = $inspeccion?->id;
     $certificadoGenerado = (bool) ($inspeccion?->certificado_generado);
     $ultimoCertificado = $inspeccion?->certificados?->sortByDesc('fecha_vencimiento')->first();
@@ -25,12 +25,12 @@
     @include('livewire.inspecciones.partials.ui-theme')
     <template x-teleport="body">
         <div wire:loading.delay
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,continueInspection,viewInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
              class="fixed inset-x-0 top-0 z-[20001] pointer-events-none">
             <div class="insp-loading-bar w-full animate-pulse"></div>
         </div>
         <div wire:loading.delay.shortest
-             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
+             wire:target="selectEmpresa,clearSelectedEmpresa,openCompanyModal,saveCompany,selectEquipment,clearSelectedEquipment,openEquipmentModal,saveEquipment,startInspection,startObservedInspection,continueInspection,viewInspection,enableInspectionEdition,saveSubgroup,flushPendingResponses,prepareCustomQuestionModal,saveCustomQuestion,prepareObservationModal,openObservationList,saveObservation,saveObservationFromModal,deleteObservationFromModal,attachInspectionFile,toggleInspectionFileCertificate,openInspectionFilePreview,deleteInspectionFile,finalizeInspection,generateInspectionCertificate,openDetailReportPreview,openObservedParametersSummary"
              class="fixed right-4 top-3 z-[20002]">
             <div class="insp-loading-pill">
                 <span class="insp-spinner"></span>
@@ -41,7 +41,6 @@
     <div class="md:flex block items-center justify-between page-header-breadcrumb">
         <div>
             <p class="font-semibold text-[1.125rem] text-defaulttextcolor !mb-0">{{ $inspeccion ? 'Actualizar inspección' : 'Nueva inspección' }}</p>
-            <p class="font-normal text-[#8c9097] text-[0.813rem] mb-0">Prototipo visual del flujo de registro de inspección por secciones.</p>
         </div>
         <div class="mt-3 md:mt-0">
             <a href="{{ route('inspecciones.index') }}" class="ti-btn ti-btn-light"><i class="ri-arrow-left-line me-1"></i>Volver a la bandeja</a>
@@ -49,20 +48,20 @@
     </div>
 
     <div class="insp-wizard">
-        <button type="button" wire:click="flushPendingResponses" @click="step = 1"
+        <button type="button" wire:click="setUiStep(1)"
                 class="insp-wizard-item"
                 :class="step === 1 ? 'is-active' : ''">
             <div class="insp-wizard-step">Paso 1</div>
             <div class="insp-wizard-title">Datos Generales</div>
         </button>
-        <button type="button" @click="if (started) step = 2"
+        <button type="button" wire:click="setUiStep(2)"
                 class="insp-wizard-item"
                 :class="(step === 2 ? 'is-active ' : '') + (!started ? 'is-locked' : '')"
                 :disabled="!started">
             <div class="insp-wizard-step">Paso 2</div>
             <div class="insp-wizard-title">Inspección</div>
         </button>
-        <button type="button" wire:click="flushPendingResponses" @click="if (started) step = 3"
+        <button type="button" wire:click="setUiStep(3)"
                 class="insp-wizard-item"
                 :class="(step === 3 ? 'is-active ' : '') + (!started ? 'is-locked' : '')"
                 :disabled="!started">
@@ -71,609 +70,27 @@
         </button>
     </div>
 
-    <div x-show="step === 1" x-transition.opacity.duration.250ms x-cloak class="space-y-4 transition-opacity duration-200">
-        <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 xl:col-span-8">
-                <div class="box"><div class="box-header"><div class="box-title !mb-0">Datos generales de la inspección</div></div><div class="box-body space-y-5">
-                    @if (!$esBorrador)
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 md:col-span-6">
-                                <label class="form-label">Código de inspección</label>
-                                <input type="text" readonly value="{{ $codigo }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-6">
-                                <label class="form-label">Número de inspección</label>
-                                <input type="text" readonly value="{{ $numeroInspeccion ?: 'Sin número' }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                        </div>
-                    @endif
-                    <fieldset :disabled="inspectionFinalized" :class="inspectionFinalized ? 'opacity-80' : ''" class="space-y-5">
-                    <div class="rounded-2xl border border-defaultborder p-4">
-                        <div class="mb-4 border-b border-primary/30 pb-3">
-                            <div class="flex flex-wrap items-center gap-3">
-                                <div class="font-semibold whitespace-nowrap">Empresa y datos de contacto</div>
-                                <div class="flex flex-1 flex-wrap items-center gap-2 min-w-[260px]">
-                                    <div class="flex-1 min-w-[220px] relative">
-                                        <input type="text" class="form-control" placeholder="Busca empresa" wire:model.live.debounce.300ms="empresaSearch">
-                                        @if (!empty($empresaSuggestions))
-                                            <div class="absolute z-20 mt-1 w-full rounded-xl border border-defaultborder bg-white shadow-lg">
-                                                @foreach ($empresaSuggestions as $suggestion)
-                                                    <button type="button" class="w-full border-b border-defaultborder px-3 py-2 text-start text-sm last:border-b-0 hover:bg-slate-50" wire:click="selectEmpresa({{ $suggestion['id'] }})">
-                                                        <div class="font-medium">{{ $suggestion['razon_social'] }}</div>
-                                                        <div class="text-[0.72rem] text-[#8c9097]">
-                                                            {{ $suggestion['nombre_comercial'] ?: 'Sin nombre comercial' }} · {{ $suggestion['ruc'] ?: 'Sin RUC' }}
-                                                        </div>
-                                                    </button>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <button type="button" class="ti-btn ti-btn-light !mb-0"><i class="ri-search-line"></i></button>
-                                    @if ($selectedEmpresaId)
-                                        <button type="button" class="ti-btn bg-danger text-white" wire:click="clearSelectedEmpresa"><i class="ri-eraser-line me-1"></i>Limpiar datos de la empresa</button>
-                                    @else
-                                        <button type="button" class="ti-btn bg-primary text-white" wire:click="openCompanyModal"><i class="ri-add-line me-1"></i>Nuevo</button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Nombre comercial</label>
-                                <input type="text" readonly value="{{ $empresaResumen['nombre_comercial'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Razón social</label>
-                                <input type="text" readonly value="{{ $empresaResumen['razon_social'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">RUC</label>
-                                <input type="text" readonly value="{{ $empresaResumen['ruc'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Unidad minera</label>
-                                <input type="text" readonly value="{{ $empresaResumen['unidad_minera'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Servicios</label>
-                                <input type="text" readonly value="{{ $empresaResumen['servicios'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Teléfono empresa</label>
-                                <input type="text" readonly value="{{ $empresaResumen['telefono_empresa'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Dirección</label>
-                                <input type="text" readonly value="{{ $empresaResumen['direccion'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Contacto principal</label>
-                                <input type="text" readonly value="{{ $empresaResumen['contacto_principal'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-4">
-                                <label class="form-label">Teléfono del contacto</label>
-                                <input type="text" readonly value="{{ $empresaResumen['telefono_contacto'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="rounded-2xl border border-defaultborder p-4">
-                        <div class="mb-4 border-b border-primary/30 pb-3">
-                            <div class="flex flex-wrap items-center gap-3">
-                                <div class="font-semibold whitespace-nowrap">Vehículo / equipo</div>
-                                <div class="flex flex-1 flex-wrap items-center gap-2 min-w-[260px]">
-                                    <div class="flex-1 min-w-[220px] relative">
-                                        <input type="text" class="form-control" placeholder="Busca equipo" wire:model.live.debounce.300ms="equipmentSearch" @disabled(!$selectedEmpresaId) style="{{ !$selectedEmpresaId ? 'cursor:not-allowed;background-color:#eef1f5;' : '' }}">
-                                        @if (!empty($equipmentSuggestions))
-                                            <div class="absolute z-20 mt-1 w-full rounded-xl border border-defaultborder bg-white shadow-lg">
-                                                @foreach ($equipmentSuggestions as $suggestion)
-                                                    <button type="button" class="w-full border-b border-defaultborder px-3 py-2 text-start text-sm last:border-b-0 hover:bg-slate-50" wire:click="selectEquipment({{ $suggestion['id'] }})">
-                                                        <div class="font-medium">{{ $suggestion['descripcion'] }}</div>
-                                                        <div class="text-[0.72rem] text-[#8c9097]">{{ $suggestion['detalle'] ?: 'Sin detalle' }}</div>
-                                                    </button>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <button type="button" class="ti-btn ti-btn-light !mb-0" @disabled(!$selectedEmpresaId) style="{{ !$selectedEmpresaId ? 'cursor:not-allowed;opacity:.65;' : '' }}"><i class="ri-search-line"></i></button>
-                                    @if ($selectedEmpresaEquipoId)
-                                        <button type="button" class="ti-btn bg-danger text-white" wire:click="clearSelectedEquipment"><i class="ri-eraser-line me-1"></i>Limpiar datos del vehiculo</button>
-                                    @else
-                                        <button type="button" class="ti-btn bg-success text-white" wire:click="openEquipmentModal" @disabled(!$selectedEmpresaId) style="{{ !$selectedEmpresaId ? 'cursor:not-allowed;opacity:.65;' : '' }}"><i class="ri-add-line me-1"></i>Registrar vehiculo</button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @if (!$selectedEmpresaId)
-                            <div class="mb-3 text-[0.82rem] text-warning">Selecciona una empresa para habilitar la busqueda y el registro de equipo.</div>
-                        @endif
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Descripcion</label>
-                                <input type="text" readonly value="{{ $equipoResumen['descripcion'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Anio</label>
-                                <input type="text" readonly value="{{ $equipoResumen['anio'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Tipo identificador</label>
-                                <input type="text" readonly value="{{ $equipoResumen['serie_tipo'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Identificador</label>
-                                <input type="text" readonly value="{{ $equipoResumen['serie_codigo'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Servicio</label>
-                                <input type="text" readonly value="{{ $equipoResumen['servicio'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Tipo</label>
-                                <input type="text" readonly value="{{ $equipoResumen['tipo'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Categoria</label>
-                                <input type="text" readonly value="{{ $equipoResumen['categoria'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Marca</label>
-                                <input type="text" readonly value="{{ $equipoResumen['marca'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                            <div class="col-span-12 md:col-span-3">
-                                <label class="form-label">Modelo</label>
-                                <input type="text" readonly value="{{ $equipoResumen['modelo'] }}" class="form-control cursor-not-allowed" style="background-color: #eef1f5;">
-                            </div>
-                        </div>
-                    </div>
-                    </fieldset>
-                </div></div>
-            </div>
-            <div class="col-span-12 xl:col-span-4 space-y-4">
-                <div class="box"><div class="box-header"><div class="box-title !mb-0">Resumen rápido</div></div><div class="box-body space-y-4">
-                    <div class="rounded-xl bg-primary/5 p-4">
-                        <div class="text-[0.75rem] uppercase tracking-[0.16em] text-primary">Estado</div>
-                        <div class="mt-2 text-xl font-semibold">{{ strtoupper($quickSummary['estado']) }}</div>
-                        @if (!empty($quickSummary['inspeccion_numero']))
-                            <div class="mt-1 text-[0.8rem] text-primary">Inspección #{{ $quickSummary['inspeccion_numero'] }}</div>
-                        @endif
-                        <div class="mt-2 text-[0.88rem] text-[#8c9097]">{{ $quickSummary['descripcion'] }}</div>
-                    </div>
-                    <div class="rounded-xl bg-success/5 p-4">
-                        <div class="text-[0.75rem] uppercase tracking-[0.16em] text-success">Accion principal</div>
-                        @if ($quickSummary['show_start'])
-                            <button type="button" class="ti-btn mt-3 w-full bg-success text-white" wire:click="startInspection">
-                                <i class="ri-play-circle-line me-1"></i>Iniciar inspección
-                            </button>
-                        @endif
-                        @if ($quickSummary['show_start_observed'])
-                            <button type="button" class="ti-btn mt-3 w-full bg-warning text-white" wire:click="startObservedInspection">
-                                <i class="ri-refresh-line me-1"></i>Iniciar inspección de observaciones
-                            </button>
-                        @endif
-                        @if ($quickSummary['show_edit'])
-                            <button type="button" class="ti-btn mt-3 w-full ti-btn-light" wire:click="enableInspectionEdition">
-                                <i class="ri-edit-line me-1"></i>Editar
-                            </button>
-                        @endif
-                        @if (!$quickSummary['show_start'] && !$quickSummary['show_start_observed'] && !$quickSummary['show_edit'])
-                            <div class="mt-3 text-[0.82rem] text-[#8c9097]">No hay acciones disponibles hasta seleccionar un equipo.</div>
-                        @endif
-                    </div>
-                </div></div>
-                <div class="box"><div class="box-header"><div class="box-title !mb-0">Historial de inspecciones</div></div><div class="box-body space-y-3">
-                    @forelse ($inspectionHistory as $item)
-                        <div class="rounded-xl border border-defaultborder p-4">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <div class="font-semibold">{{ $item['codigo'] }}</div>
-                                    <div class="text-[0.78rem] text-[#8c9097]">{{ $item['fecha'] }} · {{ $item['estado'] }}</div>
-                                    <div class="text-[0.76rem] text-[#8c9097]">Vencimiento: {{ $item['vencimiento'] }}</div>
-                                </div>
-                                <button type="button" class="ti-btn ti-btn-sm ti-btn-light" wire:click="openInspectionDetail({{ $item['id'] }})" title="Ver inspección y detalles">
-                                    <i class="ri-eye-line"></i>
-                                </button>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="rounded-xl border border-dashed border-defaultborder p-4 text-[0.9rem] text-[#8c9097]">No hay inspecciones registradas para este equipo.</div>
-                    @endforelse
-                </div></div>
-            </div>
-        </div>
+    <div class="mt-4 hidden w-full min-h-[260px] items-center justify-center rounded-2xl border border-defaultborder bg-white/90 p-5 shadow-sm"
+         wire:loading.class.remove="hidden"
+         wire:loading.class="flex"
+         wire:target="setUiStep,startInspection,startObservedInspection,continueInspection,viewInspection,enableInspectionEdition">
+        <x-loaders.dots />
     </div>
 
-    <div x-show="step === 2" x-transition.opacity.duration.250ms x-cloak class="space-y-4 transition-opacity duration-200">
-        <div class="box">
-            <div class="box-body space-y-4">
-                <fieldset :disabled="inspectionFinalized" :class="inspectionFinalized ? 'opacity-80' : ''" class="space-y-4">
-                    @php
-                        $selectedCategory = collect($questionnaireCategories)->firstWhere('id', $uiActiveQuestionCategoryId);
-                        $selectedSubcategory = $selectedCategory
-                            ? collect($selectedCategory['subcategorias'] ?? [])->firstWhere('id', $uiActiveQuestionSubcategoryId)
-                            : null;
-                        $activeGroup = collect($questionnaireGroups)->first(function ($group) use ($uiActiveQuestionCategoryId, $uiActiveQuestionSubcategoryId) {
-                            return (int) ($group['categoria_id'] ?? 0) === (int) $uiActiveQuestionCategoryId
-                                && (int) ($group['subcategoria_id'] ?? 0) === (int) $uiActiveQuestionSubcategoryId;
-                        });
-                    @endphp
+    <div wire:loading.class="hidden" wire:target="setUiStep,startInspection,startObservedInspection,continueInspection,viewInspection,enableInspectionEdition">
+        @switch($uiStep)
+            @case(1)
+                @include('livewire.inspecciones.steps.step-1')
+                @break
 
-                    <div class="rounded-xl border border-defaultborder bg-white px-4 py-3 shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <span class="text-[0.78rem] font-semibold uppercase tracking-[0.12em]" style="color:#7c3aed;">INSPECCIÓN</span>
-                            <span class="badge bg-primary/10 text-primary">{{ count($responsesInput) }} preguntas</span>
-                        </div>
-                    </div>
+            @case(2)
+                @include('livewire.inspecciones.steps.step-2')
+                @break
 
-                    <div class="rounded-2xl border border-defaultborder bg-white shadow-sm">
-                        <div class="border-b border-defaultborder px-4 py-3">
-                            <div class="insp-tab-strip">
-                                @forelse ($questionnaireCategories as $categoria)
-                                    <button type="button"
-                                            class="insp-tab {{ $uiInspectionTab === 'questions' && (int) $uiActiveQuestionCategoryId === (int) $categoria['id'] ? 'is-active' : '' }}"
-                                            wire:click="selectQuestionCategory({{ $categoria['id'] }})"
-                                            title="{{ $categoria['nombre'] }}">
-                                        <span>{{ $categoria['nombre'] }}</span>
-                                    </button>
-                                @empty
-                                    <span class="text-[0.85rem] text-[#8c9097]">No hay categorías configuradas.</span>
-                                @endforelse
-                                <button type="button"
-                                        class="insp-tab {{ $uiInspectionTab === 'files' ? 'is-active' : '' }}"
-                                        wire:click="selectInspectionFilesTab"
-                                        title="Archivos">
-                                    <span>Archivos</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        @if ($uiInspectionTab === 'questions')
-                            <div class="border-b border-defaultborder px-4 py-3" style="background:#f3e8ff;">
-                                <div class="insp-subtab-row">
-                                    <div class="insp-subtab-scroll">
-                                        @forelse (($selectedCategory['subcategorias'] ?? []) as $subcategoria)
-                                            <button type="button"
-                                                    class="insp-subtab {{ (int) $uiActiveQuestionSubcategoryId === (int) $subcategoria['id'] ? 'is-active' : '' }}"
-                                                    wire:click="selectQuestionSubcategory({{ $subcategoria['id'] }})"
-                                                    title="{{ $subcategoria['nombre'] }}">
-                                                <span>{{ $subcategoria['nombre'] }}</span>
-                                                @if (!empty($subcategoria['has_observaciones']))
-                                                    <span class="insp-subtab-alert animate-pulse" title="Subcategoría con observaciones">!</span>
-                                                @endif
-                                            </button>
-                                        @empty
-                                            <span class="text-[0.84rem] text-[#6b7280]">Esta categoría no tiene subcategorías.</span>
-                                        @endforelse
-                                    </div>
-                                    <button type="button"
-                                            class="insp-subtab-add"
-                                            title="Agregar pregunta personalizada"
-                                            @disabled(!$selectedSubcategory || !$activeGroup)
-                                            wire:click="prepareCustomQuestionModal({{ (int) ($uiActiveQuestionCategoryId ?? 0) }}, {{ (int) ($uiActiveQuestionSubcategoryId ?? 0) }}, '{{ $activeGroup['key'] ?? '' }}')">
-                                        <i class="ri-add-line"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="p-0">
-                                @if ($activeGroup && !empty($activeGroup['responses']))
-                                    <div class="grid grid-cols-12 bg-slate-50/80 border-b border-defaultborder">
-                                        <div class="col-span-12 lg:col-span-4 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Pregunta</div>
-                                        <div class="col-span-12 lg:col-span-3 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6d28d9]">Ingreso</div>
-                                        <div class="col-span-12 lg:col-span-3 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#059669]">Salida</div>
-                                        <div class="col-span-6 lg:col-span-1 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Observaciones</div>
-                                        <div class="col-span-6 lg:col-span-1 px-4 py-3 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280] text-right">Acc.</div>
-                                    </div>
-                                    <div class="divide-y divide-defaultborder">
-                                        @foreach ($activeGroup['responses'] as $row)
-                                            <div class="grid grid-cols-12 {{ (int) $row['observaciones_count'] > 0 ? 'insp-row-has-observation' : '' }}">
-                                                <div class="col-span-12 lg:col-span-4 border-s-4 {{ (int) $row['observaciones_count'] > 0 ? 'border-s-danger bg-danger/5' : 'border-s-slate-200 bg-white' }} px-4 py-5">
-                                                    <div class="font-medium {{ (int) $row['observaciones_count'] > 0 ? 'text-danger' : '' }}">{{ $row['enunciado'] }}</div>
-                                                </div>
-                                                <div class="col-span-12 lg:col-span-3 px-4 py-5" style="background-color:#e9d5ff;">
-                                                    @if ($row['ingreso_preguntar'])
-                                                        @if ($row['ingreso_tipo'] === 'select')
-                                                            <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
-                                                                <option value="">Seleccione...</option>
-                                                                @foreach ($row['ingreso_valores'] as $opt)
-                                                                    <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        @elseif ($row['ingreso_tipo'] === 'radio')
-                                                            <div class="flex flex-wrap items-center gap-3 pt-2">
-                                                                @forelse ($row['ingreso_valores'] as $opt)
-                                                                    <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
-                                                                        <input type="radio" class="form-check-input" value="{{ $opt['value'] }}" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
-                                                                        <span>{{ $opt['label'] }}</span>
-                                                                    </label>
-                                                                @empty
-                                                                    <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
-                                                                @endforelse
-                                                            </div>
-                                                        @else
-                                                            <input type="text" class="form-control bg-white" placeholder="Respuesta ingreso" wire:model.live="responsesInput.{{ $row['id'] }}.ingreso">
-                                                        @endif
-                                                    @else
-                                                        <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
-                                                    @endif
-                                                </div>
-                                                <div class="col-span-12 lg:col-span-3 px-4 py-5" style="background-color:#bbf7d0;">
-                                                    @if ($row['salida_preguntar'])
-                                                        @if ($row['salida_tipo'] === 'select')
-                                                            <select class="form-control bg-white" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
-                                                                <option value="">Seleccione...</option>
-                                                                @foreach ($row['salida_valores'] as $opt)
-                                                                    <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        @elseif ($row['salida_tipo'] === 'radio')
-                                                            <div class="flex flex-wrap items-center gap-3 pt-2">
-                                                                @forelse ($row['salida_valores'] as $opt)
-                                                                    <label class="inline-flex items-center gap-2 text-[0.86rem] text-defaulttextcolor">
-                                                                        <input type="radio" class="form-check-input" value="{{ $opt['value'] }}" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
-                                                                        <span>{{ $opt['label'] }}</span>
-                                                                    </label>
-                                                                @empty
-                                                                    <span class="text-[0.8rem] text-[#8c9097]">Sin opciones configuradas</span>
-                                                                @endforelse
-                                                            </div>
-                                                        @else
-                                                            <input type="text" class="form-control bg-white" placeholder="Respuesta salida" wire:model.live="responsesInput.{{ $row['id'] }}.salida">
-                                                        @endif
-                                                    @else
-                                                        <span class="text-[0.8rem] text-[#8c9097]">No aplica</span>
-                                                    @endif
-                                                </div>
-                                                <div class="col-span-6 lg:col-span-1 px-4 py-5">
-                                                    <span class="inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-sm font-semibold {{ (int) $row['observaciones_count'] > 0 ? 'bg-danger/10 text-danger' : 'bg-slate-100 text-slate-700' }}">
-                                                        {{ $row['observaciones_count'] }}
-                                                    </span>
-                                                </div>
-                                                <div class="col-span-6 lg:col-span-1 px-4 py-5">
-                                                    <div class="flex justify-end gap-2">
-                                                        <button type="button" class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full" wire:click="openObservationList({{ $row['id'] }})" title="Ver observaciones">
-                                                            <i class="ri-eye-line"></i>
-                                                        </button>
-                                                        <button type="button" class="ti-btn ti-btn-icon ti-btn-sm bg-warning text-white" wire:click="prepareObservationModal({{ $row['id'] }})" title="Registrar observación">
-                                                            <i class="ri-add-line"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <div class="p-4 text-[0.9rem] text-[#8c9097]">
-                                        No hay preguntas configuradas para la subcategoría seleccionada.
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
-                    </div>
-
-                    @if ($uiInspectionTab === 'files')
-                    <div class="insp-upload-panel p-4 md:p-5 space-y-4">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <div class="font-semibold uppercase tracking-[0.12em] text-[#4b5563] text-[0.82rem]">Subir archivos</div>
-                                <div class="text-[0.78rem] text-[#8c9097]">Imágenes y PDF vinculados a la inspección.</div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 lg:col-span-7">
-                                <label class="flex min-h-[180px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-defaultborder bg-slate-50/70 px-4 text-center transition hover:border-primary/40 hover:bg-primary/5">
-                                    <input type="file" class="hidden" wire:model="inspectionUploadFile" accept=".jpg,.jpeg,.png,.webp,.pdf">
-                                    <div class="space-y-2">
-                                        <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm text-primary">
-                                            <i class="ri-upload-cloud-2-line text-[1.2rem]"></i>
-                                        </div>
-                                        <div class="text-[1rem] font-medium text-[#475569]">Arrastra el archivo aquí</div>
-                                        <div class="text-[#8c9097] text-[0.82rem]">o elige un archivo desde tu equipo</div>
-                                        <span class="ti-btn ti-btn-light">Seleccionar archivo</span>
-                                        <div class="text-[0.74rem] text-[#8c9097]">Permitido: JPG, PNG, WEBP y PDF. Máx. 10MB.</div>
-                                        @if ($inspectionUploadFile)
-                                            <div class="text-[0.82rem] text-primary font-medium">Archivo seleccionado: {{ $inspectionUploadFile->getClientOriginalName() }}</div>
-                                        @endif
-                                    </div>
-                                </label>
-                                @error('inspectionUploadFile') <p class="mt-2 text-xs text-danger">{{ $message }}</p> @enderror
-                            </div>
-                            <div class="col-span-12 lg:col-span-5 space-y-3 rounded-2xl border border-defaultborder bg-slate-50/60 p-4">
-                                <div>
-                                    <label class="form-label">Nombre del archivo</label>
-                                    <input type="text" class="form-control" wire:model.defer="inspectionFileForm.descripcion" placeholder="Ej: SOAT vigente">
-                                    @error('inspectionFileForm.descripcion') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
-                                </div>
-                                <div class="rounded-xl border border-defaultborder bg-white p-3">
-                                    <label class="inline-flex items-center gap-2 text-[0.9rem]">
-                                        <input type="checkbox" class="form-check-input" wire:model.defer="inspectionFileForm.mostrar_certificado">
-                                        <span>Mostrar archivo en el certificado</span>
-                                    </label>
-                                </div>
-                                <button type="button" class="ti-btn w-full bg-primary text-white" wire:click="attachInspectionFile">
-                                    <i class="ri-upload-cloud-2-line me-1"></i>Adjuntar archivo a la inspección
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="pt-4">
-                            <div class="insp-divider mb-4"></div>
-                            <div class="mb-3 flex items-center gap-3">
-                                <div class="h-5 w-[3px] rounded-full bg-primary"></div>
-                                <div class="text-lg font-semibold">Archivos cargados</div>
-                            </div>
-                            @if (!empty($inspectionFiles))
-                                <div class="mb-2 grid grid-cols-12 gap-3 px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[#6b7280]">
-                                    <div class="col-span-12 lg:col-span-7">Archivo</div>
-                                    <div class="col-span-12 lg:col-span-3">Mostrar en certificado</div>
-                                    <div class="col-span-12 lg:col-span-2 text-right">Acciones</div>
-                                </div>
-                            @endif
-                            <div class="space-y-2">
-                                @forelse ($inspectionFiles as $file)
-                                    <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                                        <div class="grid grid-cols-12 items-center gap-3">
-                                            <div class="col-span-12 lg:col-span-7">
-                                                <div class="font-medium">{{ $file['descripcion'] }}</div>
-                                                <div class="text-[0.8rem] text-[#8c9097]">
-                                                    {{ strtoupper($file['tipo']) }} · {{ $file['fecha'] }}
-                                                </div>
-                                            </div>
-                                            <div class="col-span-12 lg:col-span-3">
-                                                <label class="inline-flex items-center gap-2 text-[0.86rem] text-[#475569]">
-                                                    <input type="checkbox"
-                                                           class="form-check-input"
-                                                           @checked($file['mostrar_certificado'])
-                                                           wire:change="toggleInspectionFileCertificate({{ $file['id'] }}, $event.target.checked)">
-                                                    <span>Mostrar en certificado</span>
-                                                </label>
-                                            </div>
-                                            <div class="col-span-12 lg:col-span-2">
-                                                <div class="flex items-center justify-start gap-2 lg:justify-end">
-                                                    <button type="button"
-                                                            class="ti-btn ti-btn-icon ti-btn-sm ti-btn-info-full"
-                                                            wire:click="openInspectionFilePreview({{ $file['id'] }})"
-                                                            @click="inspectionFilePreviewModal = true"
-                                                            title="Visualizar archivo">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button type="button"
-                                                            class="ti-btn ti-btn-icon ti-btn-sm ti-btn-danger-full"
-                                                            x-on:click="if(confirm('¿Deseas eliminar este archivo?')) { $wire.deleteInspectionFile({{ $file['id'] }}) }"
-                                                            title="Eliminar archivo">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="rounded-xl border border-dashed border-defaultborder p-4 text-[0.88rem] text-[#8c9097]">
-                                        Aún no se adjuntaron archivos a esta inspección.
-                                    </div>
-                                @endforelse
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-                </fieldset>
-            </div>
-        </div>
-    </div>
-
-    <div x-show="step === 3" x-transition.opacity.duration.250ms x-cloak class="space-y-4 transition-opacity duration-200">
-        <div class="grid grid-cols-12 gap-4">
-            <div class="col-span-12 xl:col-span-5">
-                <div class="box h-full">
-                    <div class="box-header"><div class="box-title !mb-0">Generación de certificado</div></div>
-                    <div class="box-body space-y-4">
-                        <div class="grid grid-cols-12 gap-4">
-                            <div class="col-span-12 md:col-span-7">
-                                <button type="button" class="w-full rounded-2xl bg-danger/5 p-4 text-left transition hover:bg-danger/10" wire:click="openObservedParametersSummary">
-                                    <div class="text-[0.75rem] uppercase tracking-[0.16em] text-danger">Observaciones</div>
-                                    <div class="mt-2 text-3xl font-semibold">{{ $observedParametersCount }}</div>
-                                    <div class="text-[0.9rem] font-medium">Parámetros observados</div>
-                                </button>
-                            </div>
-                            <div class="col-span-12 md:col-span-5">
-                                <div class="rounded-2xl bg-success/5 p-4">
-                                    <div class="text-[0.75rem] uppercase tracking-[0.16em] text-success">Estado</div>
-                                    <div class="mt-2 text-xl font-semibold">{{ $certificateStatusLabel }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="rounded-2xl border border-defaultborder p-4">
-                            @if ($inspectionFinalized)
-                                <div class="text-[0.93rem]">
-                                    Inspección finalizada {{ $finalizedAtLabel ? 'el ' . $finalizedAtLabel : '' }} ·
-                                    <button type="button" class="font-semibold text-info hover:underline" wire:click="openDetailReportPreview">descargar informe</button>
-                                </div>
-                                <div class="mt-3 flex justify-end">
-                                    <button type="button" class="ti-btn bg-danger text-white" wire:click="enableInspectionEdition">
-                                        <i class="ri-edit-line me-1"></i>Editar
-                                    </button>
-                                </div>
-                            @else
-                                @if ($observedParametersCount > 0)
-                                    <p class="mb-3 text-[0.92rem] text-[#374151]">
-                                        El certificado no se puede generar debido a que hay {{ $observedParametersCount }} parámetros observados.
-                                    </p>
-                                @else
-                                    <p class="mb-3 text-[0.92rem] text-[#374151]">
-                                        Para generar el certificado debes finalizar la inspección.
-                                    </p>
-                                @endif
-
-                                <div class="grid grid-cols-12 gap-3 items-end">
-                                    @if ($observedParametersCount > 0)
-                                        <div class="col-span-12 md:col-span-7">
-                                            <label class="form-label">Fecha plazo para subsanar observaciones</label>
-                                            <input type="date" class="form-control" wire:model="remediationDueDate">
-                                            @error('remediationDueDate') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
-                                        </div>
-                                        <div class="col-span-12 md:col-span-5">
-                                            <button type="button" class="ti-btn w-full bg-primary text-white" wire:click="finalizeInspection">
-                                                <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
-                                            </button>
-                                        </div>
-                                    @else
-                                        <div class="col-span-12">
-                                            <button type="button" class="ti-btn w-full bg-primary text-white" wire:click="finalizeInspection">
-                                                <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
-                                            </button>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-
-                        @if ($canGenerateCertificate)
-                            <button type="button" class="ti-btn w-full bg-success text-white" wire:click="generateInspectionCertificate">
-                                <i class="ri-award-line me-1"></i>Generar certificado de inspección
-                            </button>
-                        @elseif ($certificateGenerated)
-                            <div class="rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-success">
-                                Certificado generado correctamente.
-                            </div>
-                        @endif
-
-                        @if ($canEditInspectionFromCertificate)
-                            <p class="mb-0 text-[0.82rem] text-warning">
-                                Si finalizas nuevamente la inspección, el certificado previo se anulará para permitir edición.
-                            </p>
-                        @endif
-                        <p class="mb-0 text-[0.82rem] text-[#8c9097]">
-                            Siempre que se genere un PDF se registrará automáticamente en archivos de inspección.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-span-12 xl:col-span-7">
-                <div class="box h-full">
-                    <div class="box-header">
-                        <div class="box-title !mb-0">
-                            Certificado de inspección
-                            @if ($certificateGenerated)
-                                <span class="text-[0.9rem] font-normal text-success">(generado {{ $finalizedAtLabel ? 'el ' . $finalizedAtLabel : '' }})</span>
-                            @else
-                                <span class="text-[0.9rem] font-normal text-[#8c9097]">(No emitido)</span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="box-body space-y-4">
-                        @if ($certificatePdfUrl)
-                            <iframe src="{{ $certificatePdfUrl }}" class="h-[68vh] w-full rounded-xl border border-defaultborder"></iframe>
-                        @else
-                            <div class="rounded-2xl border border-dashed border-defaultborder bg-slate-200/65 p-8 text-center min-h-[68vh] flex flex-col justify-center">
-                                <div class="text-[0.75rem] uppercase tracking-[0.18em] text-[#8c9097]">Documento</div>
-                                <div class="mt-3 text-lg font-semibold text-[#334155]">Certificado de inspección</div>
-                                <div class="mt-2 text-[0.9rem] text-[#8c9097]">Aquí se mostrará la previsualización cuando se genere el certificado.</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
+            @case(3)
+                @include('livewire.inspecciones.steps.step-3')
+                @break
+        @endswitch
     </div>
 <template x-teleport="body">
     <div x-show="observedParamsModal" x-cloak class="fixed inset-0 z-[9999]">
@@ -1220,6 +637,25 @@
                         await wire.openObservedParametersSummary();
                     }
                 },
+                async confirmFinalize(wire) {
+                    if (!wire) return;
+                    const confirmation = await Swal.fire({
+                        title: 'Finalizar inspección',
+                        text: '¿Deseas finalizar la inspección?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        showCloseButton: true,
+                        confirmButtonText: 'Sí, finalizar',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: false,
+                        customClass: {
+                            actions: '!justify-end !w-full !px-6 !pb-4',
+                            closeButton: '!text-slate-500 !text-[22px] !font-normal'
+                        }
+                    });
+                    if (!confirmation.isConfirmed) return;
+                    await wire.finalizeInspection();
+                },
                 openCreate(wire, detail) {
                     const currentScrollY = window.scrollY || window.pageYOffset || 0;
                     const defaults = (detail && detail.defaults) ? detail.defaults : {};
@@ -1301,4 +737,3 @@
         </script>
     @endonce
 </div>
-
