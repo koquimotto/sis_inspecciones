@@ -261,7 +261,7 @@ class Formulario extends Component
         }
 
         if ($step === 3 && count($this->companyServices) === 0) {
-            $this->addError('serviceSearch', 'Debes agregar al menos un servicio para continuar.');
+            $this->addError('serviceSearch', 'Debes agrego al menos un servicio para continuar.');
             return;
         }
 
@@ -303,7 +303,7 @@ class Formulario extends Component
 
         $this->hydrateDraftFromExistingEmpresa($empresa);
         $this->resetErrorBag('empresaForm.ruc');
-        $this->dispatch('swal', type: 'info', title: 'Empresa encontrada', text: 'Se cargo la informacion existente para que puedas completar/actualizar el registro.', requireConfirm: true, confirmText: 'Continuar');
+        $this->dispatch('swal', type: 'info', title: 'Empresa encontrada', text: 'Se cargo la informacion existente para que puedas completar/actualizar el registro', requireConfirm: true, confirmText: 'Continuar');
     }
 
     public function updatedServiceSearch(string $value): void
@@ -341,7 +341,7 @@ class Formulario extends Component
 
         $servicio = Servicio::query()->whereRaw('LOWER(descripcion) = ?', [mb_strtolower($term)])->first();
         if (!$servicio) {
-            $servicio = Servicio::query()->create(['descripcion' => $term, 'estado' => 1, 'created_by' => Auth::id()]);
+            $servicio = Servicio::query()->create(['descripcion' => $term, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
 
         $this->appendService((int) $servicio->id, (string) $servicio->descripcion);
@@ -377,7 +377,7 @@ class Formulario extends Component
             $this->contactForm['apellido_materno'] = '';
             $this->contactForm['email'] = '';
             $this->contactForm['telefono'] = '';
-            $this->dispatch('swal', type: 'warning', title: 'Persona no encontrada', text: 'No se encontro la persona. Por favor, completa el registro manual.', toast: true, timer: 3200);
+            $this->dispatch('swal', type: 'warning', title: 'Persona no encontrada', text: 'No se encontro la persona. Por favor, completa el registromanual.', toast: true, timer: 3200);
             return;
         }
 
@@ -412,7 +412,7 @@ class Formulario extends Component
         $doc = trim((string) $data['contactForm']['numero_documento']);
         $exists = collect($this->companyContacts)->contains(fn (array $contacto) => (string) $contacto['numero_documento'] === $doc);
         if ($exists) {
-            $this->addError('contactForm.numero_documento', 'Este documento ya fue agregado en la lista.');
+            $this->addError('contactForm.numero_documento', 'estadocumento ya fue agregoo en la lista.');
             return;
         }
 
@@ -466,13 +466,13 @@ class Formulario extends Component
         }
 
         if (count($this->companyServices) === 0) {
-            $this->addError('serviceSearch', 'Debes agregar al menos un servicio.');
+            $this->addError('serviceSearch', 'Debes agrego al menos un servicio.');
             $this->companyStep = 2;
             return;
         }
 
         if (count($this->companyContacts) === 0) {
-            $this->addError('contactForm.numero_documento', 'Debes agregar al menos un contacto.');
+            $this->addError('contactForm.numero_documento', 'Debes agrego al menos un contacto.');
             $this->companyStep = 3;
             return;
         }
@@ -557,7 +557,7 @@ class Formulario extends Component
     public function openEquipmentModal(): void
     {
         if (!$this->selectedEmpresaId) {
-            $this->dispatch('swal', type: 'warning', title: 'Selecciona una empresa', text: 'Primero debes seleccionar una empresa para registrar un equipo.');
+            $this->dispatch('swal', type: 'warning', title: 'Selecciona una empresa', text: 'Primero debes seleccionar una empresa para registro un equipo.');
             return;
         }
 
@@ -691,7 +691,7 @@ class Formulario extends Component
 
         $tipo = Tipo::query()->whereRaw('LOWER(tipo) = ?', [mb_strtolower($term)])->first();
         if (!$tipo) {
-            $tipo = Tipo::query()->create(['tipo' => $term, 'estado' => 1, 'created_by' => Auth::id()]);
+            $tipo = Tipo::query()->create(['tipo' => $term, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectTipo((int) $tipo->id);
     }
@@ -710,7 +710,7 @@ class Formulario extends Component
 
         $categoria = Categoria::query()->whereRaw('LOWER(categoria) = ?', [mb_strtolower($term)])->first();
         if (!$categoria) {
-            $categoria = Categoria::query()->create(['categoria' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => Auth::id()]);
+            $categoria = Categoria::query()->create(['categoria' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectCategoria((int) $categoria->id);
     }
@@ -729,7 +729,7 @@ class Formulario extends Component
 
         $marca = Marca::query()->whereRaw('LOWER(marca) = ?', [mb_strtolower($term)])->first();
         if (!$marca) {
-            $marca = Marca::query()->create(['marca' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => Auth::id()]);
+            $marca = Marca::query()->create(['marca' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectMarca((int) $marca->id);
     }
@@ -754,7 +754,7 @@ class Formulario extends Component
             ->first();
 
         if (!$modelo) {
-            $modelo = Modelo::query()->create(['modelo' => $term, 'modelos' => mb_strtoupper($term), 'estado' => 1, 'created_by' => Auth::id()]);
+            $modelo = Modelo::query()->create(['modelo' => $term, 'modelos' => mb_strtoupper($term), 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectModelo((int) $modelo->id);
     }
@@ -811,8 +811,8 @@ class Formulario extends Component
                     'descripcion' => trim((string) ($data['equipmentForm']['descripcion_catalogo'] ?: $this->buildEquipmentBaseDescription())),
                     'anio' => $data['equipmentForm']['anio'] !== '' ? (int) $data['equipmentForm']['anio'] : null,
                     'estado' => 1,
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]);
             }
 
@@ -832,14 +832,14 @@ class Formulario extends Component
                 'serie_tipo' => $serieTipo,
                 'serie_codigo' => $serieCodigo,
                 'estado' => 1,
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ];
 
             if ($empresaEquipo) {
                 $empresaEquipo->update($payload);
             } else {
                 $payload['empresa_id'] = (int) $this->selectedEmpresaId;
-                $payload['created_by'] = Auth::id();
+                $payload['created_by'] = $this->actorId();
                 $empresaEquipo = EmpresaEquipo::query()->create($payload);
             }
 
@@ -852,7 +852,7 @@ class Formulario extends Component
         $this->equipmentSuggestions = [];
         $this->equipmentModal = false;
         $this->refreshInspectionContext();
-        $this->dispatch('swal', type: 'success', title: 'Equipo registrado', text: 'El equipo se guardo correctamente para la empresa seleccionada.');
+        $this->dispatch('swal', type: 'success', title: 'Equipo registroo', text: 'El equipo se guardo correctamente para la empresa seleccionada.');
     }
 
     public function updatedResponsesInput($value, string $name): void
@@ -934,8 +934,8 @@ class Formulario extends Component
                 'estado_inspeccion' => 'en_inspeccion',
                 'certificado_generado' => 0,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $detalle = $inspeccion->detalleInspecciones()->create([
@@ -944,11 +944,11 @@ class Formulario extends Component
                 'inspeccion_fecha' => $now,
                 'severidad' => null,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
-            $this->seedCuestionarioRespuestas($detalle);
+            $this->seedCuestionarioRespuesta($detalle);
         });
 
         $this->refreshInspectionContext();
@@ -980,7 +980,7 @@ class Formulario extends Component
 
         $dueAt = $lastDetail->correcion_vigencia_fecha ? Carbon::parse($lastDetail->correcion_vigencia_fecha)->endOfDay() : null;
         if (!$dueAt || $dueAt->isPast()) {
-            $this->dispatch('swal', type: 'warning', title: 'Plazo vencido', text: 'La vigencia para subsanar observaciones venciÃ³. Debes crear una nueva inspecciÃ³n.');
+            $this->dispatch('swal', type: 'warning', title: 'Plazo vencido', text: 'La vigencia para subsanar observaciones vencio. Debes crear una nueva inspeccion.');
             return;
         }
 
@@ -989,7 +989,7 @@ class Formulario extends Component
             $inspeccion->update([
                 'estado_inspeccion' => 'subsanacion',
                 'fecha_ingreso' => now()->toDateString(),
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $detalle = $inspeccion->detalleInspecciones()->create([
@@ -998,11 +998,11 @@ class Formulario extends Component
                 'inspeccion_fecha' => now(),
                 'severidad' => null,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
-            $this->copyCuestionarioRespuestasFromDetalle($detalle, (int) $lastDetail->id);
+            $this->copyCuestionarioRespuestaFromDetalle($detalle, (int) $lastDetail->id);
         });
 
         $this->refreshInspectionContext();
@@ -1041,14 +1041,14 @@ class Formulario extends Component
             ->whereKey($this->currentInspeccionId)
             ->update([
                 'estado_inspeccion' => 'en_inspeccion',
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
         DetalleInspeccion::query()
             ->whereKey($this->currentDetalleInspeccionId)
             ->update([
                 'inspeccion_estado' => 'en_inspeccion',
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
         $this->refreshInspectionContext();
@@ -1147,8 +1147,8 @@ class Formulario extends Component
             'descripcion' => trim((string) $data['descripcion']),
             'momento' => (string) $data['momento'],
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         if ($this->currentDetalleInspeccionId) {
@@ -1175,8 +1175,8 @@ class Formulario extends Component
         $responseId = (int) $observation->cuestionario_respuesta_id;
         $observation->update([
             'estado' => 0,
-            'updated_by' => Auth::id(),
-            'deleted_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
         ]);
         $observation->delete();
 
@@ -1207,7 +1207,7 @@ class Formulario extends Component
     public function saveCustomQuestion(): void
     {
         if (!$this->currentDetalleInspeccionId) {
-            $this->dispatch('swal', type: 'warning', title: 'InspecciÃ³n no disponible', text: 'Primero debes iniciar una inspecciÃ³n para registrar preguntas adicionales.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no disponible', text: 'Primero debes iniciar una inspeccion para registrar preguntas adicionales.');
             return;
         }
 
@@ -1230,21 +1230,21 @@ class Formulario extends Component
             'ingreso_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['ingreso_respuesta'] ?? null),
             'salida_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['salida_respuesta'] ?? null),
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         $groupKey = (string) ($this->customQuestionGroupKey ?? '');
         $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
         $this->customQuestionForm = $this->defaultCustomQuestionForm();
         $this->dispatch('custom-question-saved', groupKey: $groupKey);
-        $this->dispatch('swal', type: 'success', title: 'Pregunta adicional registrada', text: 'La pregunta se agregÃ³ correctamente.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Pregunta adicional registrada', text: 'La pregunta se agrego correctamente.', toast: true, timer: 2200);
     }
 
     public function attachInspectionFile(): void
     {
         if (!$this->currentInspeccionId || !$this->selectedEmpresaEquipoId || !$this->currentDetalleInspeccionId) {
-            $this->dispatch('swal', type: 'warning', title: 'InspecciÃ³n no disponible', text: 'Primero debes tener una inspecciÃ³n activa para adjuntar archivos.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no disponible', text: 'Primero debes tener una inspeccion activa para adjuntar archivos.');
             return;
         }
 
@@ -1262,7 +1262,7 @@ class Formulario extends Component
             ->find($this->currentInspeccionId);
 
         if (!$inspeccion) {
-            $this->dispatch('swal', type: 'warning', title: 'InspecciÃ³n no encontrada', text: 'No se pudo adjuntar el archivo porque la inspecciÃ³n no estÃ¡ disponible.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no encontrada', text: 'No se pudo adjuntar el archivo porque la inspeccion no esta disponible.');
             return;
         }
 
@@ -1297,21 +1297,21 @@ class Formulario extends Component
 
         InspeccionArchivoEquipo::query()->create([
             'inspeccion_id' => (int) $inspeccion->id,
-            'archivo_descripcion' => trim((string) $data['inspectionFileForm']['descripcion']),
+            'archivo_descripcion' => $this->sanitizeStorageText((string) $data['inspectionFileForm']['descripcion']),
             'archivo_autogenerado' => 0,
             'archivo_tipo' => $archivoTipo,
             'archivo_ruta' => $targetRelativePath . '/' . $fileName,
             'archivo_origen' => 'original',
             'mostrar_certificado' => (bool) ($data['inspectionFileForm']['mostrar_certificado'] ?? false),
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         $this->inspectionUploadFile = null;
         $this->inspectionFileForm = $this->defaultInspectionFileForm();
         $this->loadInspectionFiles($this->currentInspeccionId);
-        $this->dispatch('swal', type: 'success', title: 'Archivo adjuntado', text: 'El archivo se registrÃ³ correctamente en la inspecciÃ³n.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Archivo adjuntado', text: 'El archivo se registro correctamente en la inspeccion.', toast: true, timer: 2200);
     }
 
     public function updatedInspectionUploadFile(): void
@@ -1351,7 +1351,8 @@ class Formulario extends Component
         }
 
         $archivo->update([
-            'deleted_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
         ]);
         $archivo->delete();
 
@@ -1361,7 +1362,7 @@ class Formulario extends Component
         }
 
         $this->loadInspectionFiles($this->currentInspeccionId);
-        $this->dispatch('swal', type: 'success', title: 'Archivo eliminado', text: 'El archivo se eliminÃ³ correctamente.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Archivo eliminado', text: 'El archivo se elimino correctamente.', toast: true, timer: 2200);
     }
 
     public function toggleInspectionFileCertificate(int $archivoId, $mostrar): void
@@ -1376,7 +1377,7 @@ class Formulario extends Component
 
         $archivo->update([
             'mostrar_certificado' => filter_var($mostrar, FILTER_VALIDATE_BOOL),
-            'updated_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
         ]);
 
         $this->loadInspectionFiles($this->currentInspeccionId);
@@ -1404,13 +1405,13 @@ class Formulario extends Component
                     ->where('anulado', 0)
                     ->update([
                         'anulado' => 1,
-                        'motivo_anulacion' => 'Anulado por ediciÃ³n de inspecciÃ³n',
-                        'updated_by' => Auth::id(),
+                        'motivo_anulacion' => 'Anulado por edicion de inspeccion',
+                        'updated_by' => $this->actorId(),
                     ]);
 
                 $inspeccion->update([
                     'certificado_generado' => 0,
-                    'updated_by' => Auth::id(),
+                    'updated_by' => $this->actorId(),
                 ]);
             }
 
@@ -1419,20 +1420,20 @@ class Formulario extends Component
                 'inspeccion_estado' => $newState,
                 'correcion_vigencia_fecha' => $this->observedParametersCount > 0 ? $this->remediationDueDate : null,
                 'inspeccion_fecha' => now(),
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $inspeccion->update([
                 'estado_inspeccion' => $newState,
                 'fecha_salida' => now()->toDateString(),
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
         });
 
         $this->ensureDetailReportPdf();
         $this->refreshInspectionContext();
         $this->refreshCertificateState();
-        $this->dispatch('swal', type: 'success', title: 'InspecciÃ³n finalizada', text: 'La inspecciÃ³n se finalizÃ³ correctamente.');
+        $this->dispatch('swal', type: 'success', title: 'Inspeccion finalizada', text: 'La inspeccion se finalizo correctamente.');
     }
 
     public function generateInspectionCertificate(): void
@@ -1443,7 +1444,7 @@ class Formulario extends Component
 
         $this->refreshCertificateState();
         if ($this->observedParametersCount > 0) {
-            $this->dispatch('swal', type: 'warning', title: 'No disponible', text: 'No se puede generar certificado mientras existan parÃ¡metros observados.');
+            $this->dispatch('swal', type: 'warning', title: 'No disponible', text: 'No se puede generar certificado mientras existan parametros observados.');
             return;
         }
 
@@ -1461,14 +1462,14 @@ class Formulario extends Component
                 if (!(bool) $inspeccion->certificado_generado) {
                     $inspeccion->update([
                         'certificado_generado' => 1,
-                        'updated_by' => Auth::id(),
+                        'updated_by' => $this->actorId(),
                     ]);
                 }
                 return;
             }
             $tipoCertificadoId = $this->resolveTipoCertificadoId();
 
-            $pdfRelative = $this->generateInspectionPdf('CERTIFICADO DE INSPECCIÃ“N', 'certificado');
+            $pdfRelative = $this->generateInspectionPdf('CERTIFICADO DE INSPECCION', 'certificado');
             $numero = $this->nextCertificateNumber();
 
             Certificado::query()->create([
@@ -1481,32 +1482,32 @@ class Formulario extends Component
                 'pdf_ruta' => $pdfRelative,
                 'anulado' => 0,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $inspeccion->update([
                 'certificado_generado' => 1,
                 'estado_inspeccion' => 'aprobado',
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $detalle->update([
                 'inspeccion_estado' => 'aprobado',
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
             InspeccionArchivoEquipo::query()->create([
                 'inspeccion_id' => (int) $inspeccion->id,
-                'archivo_descripcion' => 'Certificado de inspecciÃ³n ' . $numero,
+                'archivo_descripcion' => $this->sanitizeStorageText('Certificado de inspeccion ' . $numero),
                 'archivo_autogenerado' => 1,
                 'archivo_tipo' => 'pdf',
                 'archivo_ruta' => $pdfRelative,
                 'archivo_origen' => 'autogenerado',
                 'mostrar_certificado' => 1,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
             $createdNewCertificate = true;
         });
@@ -1514,9 +1515,9 @@ class Formulario extends Component
         $this->refreshInspectionContext();
         $this->refreshCertificateState();
         if ($createdNewCertificate) {
-            $this->dispatch('swal', type: 'success', title: 'Certificado generado', text: 'Se generÃ³ y registrÃ³ el certificado correctamente.');
+            $this->dispatch('swal', type: 'success', title: 'Certificado generado', text: 'Se genero y registro el certificado correctamente.');
         } else {
-            $this->dispatch('swal', type: 'info', title: 'Certificado existente', text: 'El certificado ya existe en la base de datos y se cargÃ³ para su consulta.', toast: true, timer: 2200);
+            $this->dispatch('swal', type: 'info', title: 'Certificado existente', text: 'El certificado ya existe en la base de datos y se cargo para su consulta.', toast: true, timer: 2200);
         }
     }
 
@@ -1529,7 +1530,7 @@ class Formulario extends Component
 
         $this->inspectionFilePreview = [
             'id' => 0,
-            'descripcion' => 'Reporte detallado de inspecciÃ³n',
+            'descripcion' => 'Reporte detallado de inspeccion',
             'tipo' => 'pdf',
             'url' => asset($relative),
             'origen' => 'autogenerado',
@@ -1554,7 +1555,7 @@ class Formulario extends Component
             ->orderBy('id')
             ->get()
             ->map(function (CuestionarioRespuesta $respuesta): array {
-                $parametro = (string) ($respuesta->pregunta?->pregunta_enunciado ?: $respuesta->cuestionario_pregunta_personalizada ?: 'ParÃ¡metro');
+                $parametro = (string) ($respuesta->pregunta?->pregunta_enunciado ?: $respuesta->cuestionario_pregunta_personalizada ?: 'Parametro');
                 $observaciones = $respuesta->observacionesAdjuntas->map(function (CuestionarioRespuestaObservacion $obs): array {
                     return [
                         'id' => (int) $obs->id,
@@ -1619,13 +1620,13 @@ class Formulario extends Component
             'email' => trim((string) ($data['empresaForm']['email'] ?? '')) ?: null,
             'direccion' => trim((string) ($data['empresaForm']['direccion'] ?? '')) ?: null,
             'estado' => 1,
-            'updated_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
         ];
 
         if ($this->draftEmpresaId) {
             Empresa::query()->whereKey($this->draftEmpresaId)->update($payload);
         } else {
-            $payload['created_by'] = Auth::id();
+            $payload['created_by'] = $this->actorId();
             $empresa = Empresa::query()->create($payload);
             $this->draftEmpresaId = (int) $empresa->id;
         }
@@ -1697,6 +1698,10 @@ class Formulario extends Component
 
     private function persistCompanyContacts(Empresa $empresa): void
     {
+        EmpresaContacto::query()->where('empresa_id', $empresa->id)->update([
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
+        ]);
         EmpresaContacto::query()->where('empresa_id', $empresa->id)->delete();
         foreach ($this->companyContacts as $index => $contacto) {
             $persona = Persona::query()->updateOrCreate(
@@ -1709,7 +1714,8 @@ class Formulario extends Component
                     'email' => trim((string) ($contacto['email'] ?? '')) ?: null,
                     'telefono' => trim((string) ($contacto['telefono'] ?? '')) ?: null,
                     'estado' => 1,
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]
             );
 
@@ -1719,7 +1725,8 @@ class Formulario extends Component
                 'email' => trim((string) ($contacto['email'] ?? '')) ?: null,
                 'telefono' => trim((string) ($contacto['telefono'] ?? '')) ?: null,
                 'estado' => $index === 0 ? 1 : 0,
-                'created_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
         }
     }
@@ -1883,7 +1890,7 @@ class Formulario extends Component
         }
     }
 
-    private function seedCuestionarioRespuestas(DetalleInspeccion $detalle): void
+    private function seedCuestionarioRespuesta(DetalleInspeccion $detalle): void
     {
         $empresaEquipo = EmpresaEquipo::query()->with('equipo')->find($this->selectedEmpresaEquipoId);
         $equipo = $empresaEquipo?->equipo;
@@ -1925,14 +1932,14 @@ class Formulario extends Component
                     'cuestionario_categoria_id' => (int) $pregunta->cuestionario_categoria_id,
                     'cuestionario_sub_categoria_id' => (int) $pregunta->cuestionario_sub_categoria_id,
                     'estado' => 1,
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]
             );
         }
     }
 
-    private function copyCuestionarioRespuestasFromDetalle(DetalleInspeccion $targetDetalle, int $sourceDetalleId): void
+    private function copyCuestionarioRespuestaFromDetalle(DetalleInspeccion $targetDetalle, int $sourceDetalleId): void
     {
         $sourceRows = CuestionarioRespuesta::query()
             ->where('detalle_inspeccion_id', $sourceDetalleId)
@@ -1940,7 +1947,7 @@ class Formulario extends Component
             ->get();
 
         if ($sourceRows->isEmpty()) {
-            $this->seedCuestionarioRespuestas($targetDetalle);
+            $this->seedCuestionarioRespuesta($targetDetalle);
             return;
         }
 
@@ -1955,8 +1962,8 @@ class Formulario extends Component
                 'salida_respuesta' => $this->normalizeNullableText($row->salida_respuesta),
                 'estado_respuesta' => $this->normalizeNullableText($row->estado_respuesta),
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
         }
     }
@@ -2113,7 +2120,7 @@ class Formulario extends Component
             ->update([
                 'ingreso_respuesta' => $this->normalizeNullableText($input['ingreso'] ?? null),
                 'salida_respuesta' => $this->normalizeNullableText($input['salida'] ?? null),
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
     }
 
@@ -2141,6 +2148,29 @@ class Formulario extends Component
     {
         $text = trim((string) ($value ?? ''));
         return $text === '' ? null : $text;
+    }
+
+    private function sanitizeStorageText(string $value): string
+    {
+        $ascii = Str::ascii(trim($value));
+        $ascii = preg_replace('/[^A-Za-z0-9\\s\\-_.]/', '', $ascii) ?? '';
+        $ascii = preg_replace('/\\s+/', ' ', $ascii) ?? '';
+        return trim($ascii) !== '' ? trim($ascii) : 'archivo';
+    }
+
+    private function actorId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+
+        $id = $user->getAuthIdentifier();
+        if ($id === null && isset($user->id)) {
+            $id = $user->id;
+        }
+
+        return $id !== null ? (int) $id : null;
     }
 
     private function defaultCustomQuestionForm(): array
@@ -2204,7 +2234,7 @@ class Formulario extends Component
 
         $state = (string) $detalle->inspeccion_estado;
         $this->certificateStatusLabel = match ($state) {
-            'aprobado' => 'finalizado',
+            'aprobado' => 'finalizoo',
             'observado', 'subsanacion' => 'observado',
             'anulado' => 'anulado',
             'rechazado' => 'rechazado',
@@ -2249,8 +2279,8 @@ class Formulario extends Component
         $tipo = TipoCertificado::query()->create([
             'tipo_certificado' => 'INSPECCION',
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         return (int) $tipo->id;
@@ -2284,15 +2314,15 @@ class Formulario extends Component
         $relative = $this->generateInspectionPdf('REPORTE DETALLADO', 'reporte_detallado');
         InspeccionArchivoEquipo::query()->create([
             'inspeccion_id' => (int) $this->currentInspeccionId,
-            'archivo_descripcion' => 'Reporte detallado inspecciÃ³n #' . $this->resolveInspectionNumber(),
+                'archivo_descripcion' => $this->sanitizeStorageText('Reporte detallado inspeccion ' . $this->resolveInspectionNumber()),
             'archivo_autogenerado' => 1,
             'archivo_tipo' => 'pdf',
             'archivo_ruta' => $relative,
             'archivo_origen' => 'autogenerado',
             'mostrar_certificado' => 0,
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         return $relative;
@@ -2470,12 +2500,12 @@ class Formulario extends Component
                     if ((string) $latest->estado_inspeccion === 'observado') {
                         $latest->update([
                             'estado_inspeccion' => 'rechazado',
-                            'updated_by' => Auth::id(),
+                            'updated_by' => $this->actorId(),
                         ]);
                         if ($latest->ultimoDetalle && (string) $latest->ultimoDetalle->inspeccion_estado === 'observado') {
                             $latest->ultimoDetalle->update([
                                 'inspeccion_estado' => 'rechazado',
-                                'updated_by' => Auth::id(),
+                                'updated_by' => $this->actorId(),
                             ]);
                         }
                     }
@@ -2554,4 +2584,10 @@ class Formulario extends Component
         );
     }
 }
+
+
+
+
+
+
 
