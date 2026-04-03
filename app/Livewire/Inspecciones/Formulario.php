@@ -20,6 +20,7 @@ use App\Models\Persona;
 use App\Models\Servicio;
 use App\Models\Tipo;
 use App\Models\TipoCertificado;
+use App\Services\InspeccionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -1430,7 +1431,7 @@ class Formulario extends Component
             ]);
         });
 
-        $this->ensureDetailReportPdf();
+        $this->ensureDetailReportPdf(true);
         $this->refreshInspectionContext();
         $this->refreshCertificateState();
         $this->dispatch('swal', type: 'success', title: 'Inspeccion finalizada', text: 'La inspeccion se finalizo correctamente.');
@@ -1469,7 +1470,11 @@ class Formulario extends Component
             }
             $tipoCertificadoId = $this->resolveTipoCertificadoId();
 
-            $pdfRelative = $this->generateInspectionPdf('CERTIFICADO DE INSPECCION', 'certificado');
+            $pdfRelative = app(InspeccionService::class)
+                ->generateInspectionCertificatePdf($inspeccion, $detalle, (int) $this->observedParametersCount);
+            if (!$pdfRelative) {
+                throw new \RuntimeException('No se pudo generar el certificado.');
+            }
             $numero = $this->nextCertificateNumber();
 
             Certificado::query()->create([
@@ -2169,6 +2174,9 @@ class Formulario extends Component
         if ($id === null && isset($user->id)) {
             $id = $user->id;
         }
+        if ($id === null && isset($user->user_id)) {
+            $id = $user->user_id;
+        }
 
         return $id !== null ? (int) $id : null;
     }
@@ -2234,7 +2242,7 @@ class Formulario extends Component
 
         $state = (string) $detalle->inspeccion_estado;
         $this->certificateStatusLabel = match ($state) {
-            'aprobado' => 'finalizoo',
+            'aprobado' => 'finalizado',
             'observado', 'subsanacion' => 'observado',
             'anulado' => 'anulado',
             'rechazado' => 'rechazado',
@@ -2260,13 +2268,17 @@ class Formulario extends Component
             $this->remediationDueDate = Carbon::parse($detalle->correcion_vigencia_fecha)->toDateString();
         }
 
-        $latestReport = InspeccionArchivoEquipo::query()
-            ->where('inspeccion_id', $inspeccion->id)
-            ->where('archivo_origen', 'autogenerado')
-            ->where('archivo_descripcion', 'like', 'Reporte detallado%')
-            ->latest('id')
-            ->first();
-        $this->reportPdfUrl = $latestReport?->archivo_ruta ? asset((string) $latestReport->archivo_ruta) : null;
+        $reportPath = (string) ($detalle->pdf_ruta ?? '');
+        if ($reportPath === '') {
+            $latestReport = InspeccionArchivoEquipo::query()
+                ->where('inspeccion_id', $inspeccion->id)
+                ->where('archivo_origen', 'autogenerado')
+                ->where('archivo_descripcion', 'like', 'Reporte detallado%')
+                ->latest('id')
+                ->first();
+            $reportPath = (string) ($latestReport?->archivo_ruta ?? '');
+        }
+        $this->reportPdfUrl = $reportPath !== '' ? asset($reportPath) : null;
     }
 
     private function resolveTipoCertificadoId(): int
@@ -2293,39 +2305,24 @@ class Formulario extends Component
         return sprintf('CERT-%s-%06d', $year, $next);
     }
 
-    private function ensureDetailReportPdf(): ?string
+    private function ensureDetailReportPdf(bool $forceGenerate = false): ?string
     {
         if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
             return null;
         }
 
-        $existingReport = InspeccionArchivoEquipo::query()
-            ->where('inspeccion_id', (int) $this->currentInspeccionId)
-            ->where('archivo_origen', 'autogenerado')
-            ->where('archivo_tipo', 'pdf')
-            ->where('archivo_descripcion', 'like', 'Reporte detallado%')
-            ->latest('id')
-            ->first();
-
-        if ($existingReport && filled($existingReport->archivo_ruta)) {
-            return (string) $existingReport->archivo_ruta;
+        $inspeccion = Inspeccion::query()->find((int) $this->currentInspeccionId);
+        $detalle = DetalleInspeccion::query()->find((int) $this->currentDetalleInspeccionId);
+        if (!$inspeccion || !$detalle) {
+            return null;
         }
 
-        $relative = $this->generateInspectionPdf('REPORTE DETALLADO', 'reporte_detallado');
-        InspeccionArchivoEquipo::query()->create([
-            'inspeccion_id' => (int) $this->currentInspeccionId,
-                'archivo_descripcion' => $this->sanitizeStorageText('Reporte detallado inspeccion ' . $this->resolveInspectionNumber()),
-            'archivo_autogenerado' => 1,
-            'archivo_tipo' => 'pdf',
-            'archivo_ruta' => $relative,
-            'archivo_origen' => 'autogenerado',
-            'mostrar_certificado' => 0,
-            'estado' => 1,
-            'created_by' => $this->actorId(),
-            'updated_by' => $this->actorId(),
-        ]);
-
-        return $relative;
+        return app(InspeccionService::class)->generateDetailReportPdf(
+            $inspeccion,
+            $detalle,
+            $this->actorId(),
+            $forceGenerate
+        );
     }
 
     private function generateInspectionPdf(string $titleText, string $prefix): string
@@ -2352,6 +2349,298 @@ class Formulario extends Component
         File::put($absoluteFile, $this->buildSimplePdf($titleText));
 
         return $targetRelativePath . '/' . $fileName;
+    }
+
+    private function generateCertificatePdf(Inspeccion $inspeccion, DetalleInspeccion $detalle): string
+    {
+        $empresaEquipo = $inspeccion->empresaEquipo;
+        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
+        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
+        $numeroInspeccion = (string) $this->resolveInspectionNumber();
+
+        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
+        if ($folder === '') {
+            $folder = 'INSPECCION';
+        }
+
+        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetDirectory = public_path($targetRelativePath);
+        if (!File::exists($targetDirectory)) {
+            File::makeDirectory($targetDirectory, 0755, true);
+        }
+
+        $templateImage = $this->prepareJpegForPdf(public_path('img/plantilla.png'));
+
+        $selectedFiles = InspeccionArchivoEquipo::query()
+            ->where('inspeccion_id', (int) $inspeccion->id)
+            ->where('estado', 1)
+            ->where('mostrar_certificado', 1)
+            ->orderBy('id')
+            ->get();
+
+        $summaryLines = [
+            'Certificado de inspeccion',
+            'Codigo: ' . (string) ($inspeccion->codigo_formateado ?: ('#' . $inspeccion->id)),
+            'Fecha de emision: ' . now()->format('d/m/Y H:i'),
+            'Empresa: ' . (string) ($inspeccion->empresa?->razon_social ?: 'No registrada'),
+            'Equipo: ' . (string) ($empresaEquipo?->descripcion ?: $inspeccion->equipo?->descripcion ?: 'No registrado'),
+            'Serie: ' . (string) ($empresaEquipo?->serie_codigo ?: '-'),
+            'Estado de inspeccion: ' . Str::title(str_replace('_', ' ', (string) $detalle->inspeccion_estado)),
+            'Observaciones del detalle: ' . (string) $this->observedParametersCount,
+            'Archivos visibles en certificado: ' . (string) $selectedFiles->count(),
+        ];
+
+        $pages = [[
+            'title' => 'CERTIFICADO DE INSPECCION',
+            'lines' => $summaryLines,
+            'image' => null,
+        ]];
+
+        foreach ($selectedFiles as $file) {
+            $absolutePath = public_path((string) $file->archivo_ruta);
+            $attachmentImage = $this->prepareJpegForPdf($absolutePath);
+            if ($attachmentImage) {
+                $pages[] = [
+                    'title' => 'ANEXO - ' . (string) ($file->archivo_descripcion ?: ('Archivo #' . $file->id)),
+                    'lines' => [
+                        'Archivo: ' . (string) ($file->archivo_descripcion ?: ('Adjunto #' . $file->id)),
+                        'Tipo: ' . strtoupper((string) ($file->archivo_tipo ?: 'archivo')),
+                    ],
+                    'image' => $attachmentImage['path'],
+                ];
+                continue;
+            }
+
+            $pages[] = [
+                'title' => 'ANEXO - ' . (string) ($file->archivo_descripcion ?: ('Archivo #' . $file->id)),
+                'lines' => [
+                    'Archivo no visualizable como imagen dentro del PDF.',
+                    'Descripcion: ' . (string) ($file->archivo_descripcion ?: '-'),
+                    'Ruta: ' . (string) ($file->archivo_ruta ?: '-'),
+                ],
+                'image' => null,
+            ];
+        }
+
+        $pdfBinary = $this->buildRichPdfDocument(
+            $pages,
+            $templateImage['path'] ?? null
+        );
+
+        $fileName = now()->format('YmdHis') . '_certificado.pdf';
+        $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
+        File::put($absoluteFile, $pdfBinary);
+
+        if ($templateImage && !empty($templateImage['cleanup'])) {
+            File::delete((string) $templateImage['path']);
+        }
+
+        foreach ($pages as $page) {
+            if (!empty($page['image']) && isset($page['image']) && str_contains((string) $page['image'], 'tmp_pdf_')) {
+                File::delete((string) $page['image']);
+            }
+        }
+
+        return $targetRelativePath . '/' . $fileName;
+    }
+
+    private function prepareJpegForPdf(string $absolutePath): ?array
+    {
+        if (!File::exists($absolutePath)) {
+            return null;
+        }
+
+        $imageInfo = @getimagesize($absolutePath);
+        if (!$imageInfo || empty($imageInfo['mime'])) {
+            return null;
+        }
+
+        $mime = strtolower((string) $imageInfo['mime']);
+        if ($mime === 'image/jpeg' || $mime === 'image/jpg') {
+            return [
+                'path' => $absolutePath,
+                'cleanup' => false,
+            ];
+        }
+
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            return null;
+        }
+
+        $raw = @file_get_contents($absolutePath);
+        if ($raw === false) {
+            return null;
+        }
+
+        $source = @imagecreatefromstring($raw);
+        if (!$source) {
+            return null;
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $canvas = imagecreatetruecolor($width, $height);
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        imagecopy($canvas, $source, 0, 0, 0, 0, $width, $height);
+
+        $tmpPath = storage_path('app/tmp_pdf_' . Str::random(24) . '.jpg');
+        @imagejpeg($canvas, $tmpPath, 88);
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        if (!File::exists($tmpPath)) {
+            return null;
+        }
+
+        return [
+            'path' => $tmpPath,
+            'cleanup' => true,
+        ];
+    }
+
+    private function buildRichPdfDocument(array $pages, ?string $templateImagePath = null): string
+    {
+        $a4Width = 595;
+        $a4Height = 842;
+
+        $objects = [];
+        $addObject = function (string $content) use (&$objects): int {
+            $objects[] = $content;
+            return count($objects);
+        };
+
+        $catalogId = $addObject('');
+        $pagesId = $addObject('');
+        $fontId = $addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+        $imageObjectIds = [];
+        $imageSizes = [];
+
+        $registerImage = function (?string $path) use (&$imageObjectIds, &$imageSizes, $addObject): ?int {
+            if (!$path || !File::exists($path)) {
+                return null;
+            }
+            if (isset($imageObjectIds[$path])) {
+                return $imageObjectIds[$path];
+            }
+
+            $size = @getimagesize($path);
+            if (!$size || empty($size[0]) || empty($size[1])) {
+                return null;
+            }
+            $raw = @file_get_contents($path);
+            if ($raw === false) {
+                return null;
+            }
+
+            $imgObj = sprintf(
+                '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>' . "\nstream\n",
+                (int) $size[0],
+                (int) $size[1],
+                strlen($raw)
+            ) . $raw . "\nendstream";
+
+            $imgId = $addObject($imgObj);
+            $imageObjectIds[$path] = $imgId;
+            $imageSizes[$path] = [(float) $size[0], (float) $size[1]];
+
+            return $imgId;
+        };
+
+        $templateObjId = $registerImage($templateImagePath);
+        $pageIds = [];
+
+        foreach ($pages as $page) {
+            $xObjectMap = [];
+            if ($templateObjId) {
+                $xObjectMap['ImTpl'] = $templateObjId;
+            }
+
+            $attachmentPath = (string) ($page['image'] ?? '');
+            $attachmentObjId = $registerImage($attachmentPath !== '' ? $attachmentPath : null);
+            if ($attachmentObjId) {
+                $xObjectMap['ImFile'] = $attachmentObjId;
+            }
+
+            $stream = '';
+
+            if (isset($xObjectMap['ImTpl'])) {
+                $stream .= "q {$a4Width} 0 0 {$a4Height} 0 0 cm /ImTpl Do Q\n";
+            }
+
+            $title = $this->escapePdfText((string) ($page['title'] ?? 'CERTIFICADO'));
+            $stream .= "BT /F1 15 Tf 42 790 Td ({$title}) Tj ET\n";
+
+            $currentY = 760;
+            foreach ((array) ($page['lines'] ?? []) as $line) {
+                $text = $this->escapePdfText((string) $line);
+                $stream .= "BT /F1 11 Tf 42 {$currentY} Td ({$text}) Tj ET\n";
+                $currentY -= 18;
+                if ($currentY < 110) {
+                    break;
+                }
+            }
+
+            if (isset($xObjectMap['ImFile']) && isset($imageSizes[$attachmentPath])) {
+                [$imgW, $imgH] = $imageSizes[$attachmentPath];
+                $maxW = 500.0;
+                $maxH = 470.0;
+                $scale = min($maxW / max($imgW, 1.0), $maxH / max($imgH, 1.0), 1.0);
+                $drawW = $imgW * $scale;
+                $drawH = $imgH * $scale;
+                $x = ($a4Width - $drawW) / 2;
+                $y = 90;
+                $stream .= sprintf("q %.3f 0 0 %.3f %.3f %.3f cm /ImFile Do Q\n", $drawW, $drawH, $x, $y);
+            }
+
+            $contentId = $addObject('<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "endstream");
+
+            $xObjResource = '';
+            if (!empty($xObjectMap)) {
+                $parts = [];
+                foreach ($xObjectMap as $name => $objId) {
+                    $parts[] = '/' . $name . ' ' . $objId . ' 0 R';
+                }
+                $xObjResource = '/XObject << ' . implode(' ', $parts) . ' >>';
+            }
+
+            $pageId = $addObject(
+                "<< /Type /Page /Parent {$pagesId} 0 R /MediaBox [0 0 {$a4Width} {$a4Height}] /Resources << /Font << /F1 {$fontId} 0 R >> {$xObjResource} >> /Contents {$contentId} 0 R >>"
+            );
+            $pageIds[] = $pageId;
+        }
+
+        $kids = implode(' ', array_map(fn (int $id) => $id . ' 0 R', $pageIds));
+        $objects[$pagesId - 1] = '<< /Type /Pages /Kids [' . $kids . '] /Count ' . count($pageIds) . ' >>';
+        $objects[$catalogId - 1] = '<< /Type /Catalog /Pages ' . $pagesId . ' 0 R >>';
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $i => $obj) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($i + 1) . " 0 obj\n" . $obj . "\nendobj\n";
+        }
+
+        $xrefPos = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= count($objects); $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root {$catalogId} 0 R >>\n";
+        $pdf .= "startxref\n{$xrefPos}\n%%EOF";
+
+        return $pdf;
+    }
+
+    private function escapePdfText(string $text): string
+    {
+        return str_replace(
+            ['\\', '(', ')', "\r", "\n"],
+            ['\\\\', '\\(', '\\)', ' ', ' '],
+            trim($text)
+        );
     }
 
     private function buildSimplePdf(string $text): string
@@ -2522,8 +2811,8 @@ class Formulario extends Component
                 } elseif ($expireDate) {
                     $descripcion = 'El certificado de inspeccion se encuentra vigente hasta ' . $expireDate->format('d/m/Y') . '.';
                 } else {
-                    $showCreate = true;
-                    $descripcion = 'No existe certificado vigente. Puedes crear una nueva inspeccion.';
+                    $showCreate = false;
+                    $descripcion = 'La inspeccion fue finalizada sin observaciones, pero aun no se ha generado el certificado.';
                 }
             } elseif ($estado === 'rechazado') {
                 $showCreate = true;

@@ -1484,6 +1484,7 @@ ALTER TABLE `inspecciones`.`cuestionario_respuestas` ADD COLUMN `ingreso_respues
 
 ALTER TABLE `inspecciones`.`cuestionario_respuestas` ADD COLUMN `salida_respuesta_tipo` enum('select','radio','entero','decimal','texto','fecha','fecha_hora','') NULL AFTER `ingreso_respuesta`;
 
+ALTER TABLE `inspecciones`.`detalle_inspeccion` ADD COLUMN `pdf_ruta` text NULL AFTER `inspeccion_observaciones`;
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

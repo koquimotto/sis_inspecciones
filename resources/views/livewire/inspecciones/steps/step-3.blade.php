@@ -25,7 +25,7 @@
                             @if ($inspectionFinalized)
                                 <div class="text-[0.93rem]">
                                     Inspección finalizada {{ $finalizedAtLabel ? 'el ' . $finalizedAtLabel : '' }} ·
-                                    <button type="button" class="font-semibold text-info hover:underline" wire:click="openDetailReportPreview">descargar informe</button>
+                                    <button type="button" class="font-semibold text-info hover:underline" wire:click="openDetailReportPreview">ver informe detallado</button>
                                 </div>
                                 <div class="mt-3 flex justify-end">
                                     <button type="button" class="ti-btn bg-danger text-white" wire:click="enableInspectionEdition">
@@ -51,13 +51,13 @@
                                             @error('remediationDueDate') <p class="mt-1 text-xs text-danger">{{ $message }}</p> @enderror
                                         </div>
                                         <div class="col-span-12 md:col-span-5">
-                                            <button type="button" class="ti-btn w-full bg-primary text-white" x-on:click.prevent="window.InspeccionesObs?.confirmFinalize($wire)">
+                                            <button type="button" class="ti-btn w-full bg-primary text-white" x-on:click.prevent="window.InspeccionesObs?.confirmFinalize($wire, { hasCurrentCertificate: @js($canEditInspectionFromCertificate), hasObservations: true })">
                                                 <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
                                             </button>
                                         </div>
                                     @else
                                         <div class="col-span-12">
-                                            <button type="button" class="ti-btn w-full bg-primary text-white" x-on:click.prevent="window.InspeccionesObs?.confirmFinalize($wire)">
+                                            <button type="button" class="ti-btn w-full bg-primary text-white" x-on:click.prevent="window.InspeccionesObs?.confirmFinalize($wire, { hasCurrentCertificate: @js($canEditInspectionFromCertificate), hasObservations: false })">
                                                 <i class="ri-checkbox-circle-line me-1"></i>Finalizar inspección
                                             </button>
                                         </div>
@@ -76,10 +76,16 @@
                             </div>
                         @endif
 
-                        @if ($canEditInspectionFromCertificate)
-                            <p class="mb-0 text-[0.82rem] text-warning">
-                                Si finalizas nuevamente la inspección, el certificado previo se anulará para permitir edición.
-                            </p>
+                        @if ($canEditInspectionFromCertificate && !$inspectionFinalized)
+                            @if ($observedParametersCount > 0)
+                                <p class="mb-0 text-[0.82rem] text-warning">
+                                    Al finalizar con observaciones se anulará el certificado actual.
+                                </p>
+                            @else
+                                <p class="mb-0 text-[0.82rem] text-warning">
+                                    Al finalizar sin observaciones se deberá generar nuevamente el certificado.
+                                </p>
+                            @endif
                         @endif
                         <p class="mb-0 text-[0.82rem] text-[#8c9097]">
                             Siempre que se genere un PDF se registrará automáticamente en archivos de inspección.

@@ -637,11 +637,20 @@
                         await wire.openObservedParametersSummary();
                     }
                 },
-                async confirmFinalize(wire) {
+                async confirmFinalize(wire, context = {}) {
                     if (!wire) return;
+                    const hasCurrentCertificate = !!(context && context.hasCurrentCertificate);
+                    const hasObservations = !!(context && context.hasObservations);
+                    let text = '¿Deseas finalizar la inspección?';
+                    if (hasCurrentCertificate && hasObservations) {
+                        text = '¿Deseas finalizar la inspección? El certificado actual se anulará por existir observaciones.';
+                    } else if (hasCurrentCertificate && !hasObservations) {
+                        text = '¿Deseas finalizar la inspección? Luego deberás generar nuevamente el certificado.';
+                    }
+
                     const confirmation = await Swal.fire({
                         title: 'Finalizar inspección',
-                        text: '¿Deseas finalizar la inspección?',
+                        text,
                         icon: 'question',
                         showCancelButton: true,
                         showCloseButton: true,
