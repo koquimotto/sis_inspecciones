@@ -152,3 +152,12 @@ Route::prefix('servicios')->name('servicios.')->group(function () {
     })->name('index');
 
 });
+
+// Nuevas interfaces
+Route::prefix('pages')->name('pages.')->group(function () {
+
+    Route::get('/items', function () {
+        return view('livewire.pages.items.index');
+    })->name('items.index');
+
+});
