@@ -3,6 +3,7 @@
 namespace App\Livewire\Inspecciones;
 
 use App\Models\Categoria;
+use App\Models\Certificado;
 use App\Models\CuestionarioPregunta;
 use App\Models\CuestionarioRespuesta;
 use App\Models\CuestionarioRespuestaObservacion;
@@ -18,6 +19,8 @@ use App\Models\Modelo;
 use App\Models\Persona;
 use App\Models\Servicio;
 use App\Models\Tipo;
+use App\Models\TipoCertificado;
+use App\Services\InspeccionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -71,6 +74,7 @@ class Formulario extends Component
     public bool $inspectionDetailModal = false;
     public array $inspectionDetailView = [];
     public array $questionnaireGroups = [];
+    public array $questionnaireCategories = [];
     public array $responsesInput = [];
     public array $responseMeta = [];
     public array $responseSubgroupMap = [];
@@ -86,9 +90,22 @@ class Formulario extends Component
     public array $inspectionFiles = [];
     public bool $inspectionFilePreviewModal = false;
     public array $inspectionFilePreview = [];
-    public ?string $uiOpenQuestionGroup = null;
+    public ?int $uiActiveQuestionCategoryId = null;
+    public ?int $uiActiveQuestionSubcategoryId = null;
+    public string $uiInspectionTab = 'questions';
     public array $customQuestionForm = [];
     public ?string $customQuestionGroupKey = null;
+    public int $observedParametersCount = 0;
+    public string $certificateStatusLabel = 'en proceso';
+    public bool $inspectionFinalized = false;
+    public bool $certificateGenerated = false;
+    public bool $canFinalizeInspection = false;
+    public bool $canGenerateCertificate = false;
+    public bool $canEditInspectionFromCertificate = false;
+    public ?string $finalizedAtLabel = null;
+    public ?string $certificatePdfUrl = null;
+    public ?string $reportPdfUrl = null;
+    public ?string $remediationDueDate = null;
 
     public function mount(?Inspeccion $inspeccion = null): void
     {
@@ -132,6 +149,30 @@ class Formulario extends Component
     public function render(): View
     {
         return view('livewire.inspecciones.formulario');
+    }
+
+    public function setUiStep(int $step): void
+    {
+        if (!in_array($step, [1, 2, 3], true)) {
+            return;
+        }
+
+        $started = (bool) ($this->quickSummary['started'] ?? false);
+        if ($step > 1 && !$started) {
+            return;
+        }
+
+        if ($this->uiStep === 2 && $step !== 2) {
+            $this->flushPendingResponses();
+        }
+
+        $this->uiStep = $step;
+        $this->dispatch(
+            'inspection-state',
+            started: $started,
+            inspectionFinalized: (bool) ($this->quickSummary['inspection_finalized'] ?? false),
+            step: $this->uiStep
+        );
     }
 
     public function updatedEmpresaSearch(string $value): void
@@ -221,7 +262,7 @@ class Formulario extends Component
         }
 
         if ($step === 3 && count($this->companyServices) === 0) {
-            $this->addError('serviceSearch', 'Debes agregar al menos un servicio para continuar.');
+            $this->addError('serviceSearch', 'Debes agrego al menos un servicio para continuar.');
             return;
         }
 
@@ -263,7 +304,7 @@ class Formulario extends Component
 
         $this->hydrateDraftFromExistingEmpresa($empresa);
         $this->resetErrorBag('empresaForm.ruc');
-        $this->dispatch('swal', type: 'info', title: 'Empresa encontrada', text: 'Se cargo la informacion existente para que puedas completar/actualizar el registro.', requireConfirm: true, confirmText: 'Continuar');
+        $this->dispatch('swal', type: 'info', title: 'Empresa encontrada', text: 'Se cargo la informacion existente para que puedas completar/actualizar el registro', requireConfirm: true, confirmText: 'Continuar');
     }
 
     public function updatedServiceSearch(string $value): void
@@ -301,7 +342,7 @@ class Formulario extends Component
 
         $servicio = Servicio::query()->whereRaw('LOWER(descripcion) = ?', [mb_strtolower($term)])->first();
         if (!$servicio) {
-            $servicio = Servicio::query()->create(['descripcion' => $term, 'estado' => 1, 'created_by' => Auth::id()]);
+            $servicio = Servicio::query()->create(['descripcion' => $term, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
 
         $this->appendService((int) $servicio->id, (string) $servicio->descripcion);
@@ -337,7 +378,7 @@ class Formulario extends Component
             $this->contactForm['apellido_materno'] = '';
             $this->contactForm['email'] = '';
             $this->contactForm['telefono'] = '';
-            $this->dispatch('swal', type: 'warning', title: 'Persona no encontrada', text: 'No se encontro la persona. Por favor, completa el registro manual.', toast: true, timer: 3200);
+            $this->dispatch('swal', type: 'warning', title: 'Persona no encontrada', text: 'No se encontro la persona. Por favor, completa el registromanual.', toast: true, timer: 3200);
             return;
         }
 
@@ -372,7 +413,7 @@ class Formulario extends Component
         $doc = trim((string) $data['contactForm']['numero_documento']);
         $exists = collect($this->companyContacts)->contains(fn (array $contacto) => (string) $contacto['numero_documento'] === $doc);
         if ($exists) {
-            $this->addError('contactForm.numero_documento', 'Este documento ya fue agregado en la lista.');
+            $this->addError('contactForm.numero_documento', 'estadocumento ya fue agregoo en la lista.');
             return;
         }
 
@@ -426,13 +467,13 @@ class Formulario extends Component
         }
 
         if (count($this->companyServices) === 0) {
-            $this->addError('serviceSearch', 'Debes agregar al menos un servicio.');
+            $this->addError('serviceSearch', 'Debes agrego al menos un servicio.');
             $this->companyStep = 2;
             return;
         }
 
         if (count($this->companyContacts) === 0) {
-            $this->addError('contactForm.numero_documento', 'Debes agregar al menos un contacto.');
+            $this->addError('contactForm.numero_documento', 'Debes agrego al menos un contacto.');
             $this->companyStep = 3;
             return;
         }
@@ -483,7 +524,7 @@ class Formulario extends Component
                         $equipo?->marca?->marca,
                         $equipo?->modelo?->modelo ?: $equipo?->modelo?->modelos,
                         $empresaEquipo->serie_codigo,
-                    ])->filter()->join(' · ')),
+                    ])->filter()->join(' Â· ')),
                 ];
             })
             ->all();
@@ -517,7 +558,7 @@ class Formulario extends Component
     public function openEquipmentModal(): void
     {
         if (!$this->selectedEmpresaId) {
-            $this->dispatch('swal', type: 'warning', title: 'Selecciona una empresa', text: 'Primero debes seleccionar una empresa para registrar un equipo.');
+            $this->dispatch('swal', type: 'warning', title: 'Selecciona una empresa', text: 'Primero debes seleccionar una empresa para registro un equipo.');
             return;
         }
 
@@ -651,7 +692,7 @@ class Formulario extends Component
 
         $tipo = Tipo::query()->whereRaw('LOWER(tipo) = ?', [mb_strtolower($term)])->first();
         if (!$tipo) {
-            $tipo = Tipo::query()->create(['tipo' => $term, 'estado' => 1, 'created_by' => Auth::id()]);
+            $tipo = Tipo::query()->create(['tipo' => $term, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectTipo((int) $tipo->id);
     }
@@ -670,7 +711,7 @@ class Formulario extends Component
 
         $categoria = Categoria::query()->whereRaw('LOWER(categoria) = ?', [mb_strtolower($term)])->first();
         if (!$categoria) {
-            $categoria = Categoria::query()->create(['categoria' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => Auth::id()]);
+            $categoria = Categoria::query()->create(['categoria' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectCategoria((int) $categoria->id);
     }
@@ -689,7 +730,7 @@ class Formulario extends Component
 
         $marca = Marca::query()->whereRaw('LOWER(marca) = ?', [mb_strtolower($term)])->first();
         if (!$marca) {
-            $marca = Marca::query()->create(['marca' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => Auth::id()]);
+            $marca = Marca::query()->create(['marca' => $term, 'codigo' => null, 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectMarca((int) $marca->id);
     }
@@ -714,7 +755,7 @@ class Formulario extends Component
             ->first();
 
         if (!$modelo) {
-            $modelo = Modelo::query()->create(['modelo' => $term, 'modelos' => mb_strtoupper($term), 'estado' => 1, 'created_by' => Auth::id()]);
+            $modelo = Modelo::query()->create(['modelo' => $term, 'modelos' => mb_strtoupper($term), 'estado' => 1, 'created_by' => $this->actorId(), 'updated_by' => $this->actorId()]);
         }
         $this->selectModelo((int) $modelo->id);
     }
@@ -771,8 +812,8 @@ class Formulario extends Component
                     'descripcion' => trim((string) ($data['equipmentForm']['descripcion_catalogo'] ?: $this->buildEquipmentBaseDescription())),
                     'anio' => $data['equipmentForm']['anio'] !== '' ? (int) $data['equipmentForm']['anio'] : null,
                     'estado' => 1,
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]);
             }
 
@@ -792,14 +833,14 @@ class Formulario extends Component
                 'serie_tipo' => $serieTipo,
                 'serie_codigo' => $serieCodigo,
                 'estado' => 1,
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ];
 
             if ($empresaEquipo) {
                 $empresaEquipo->update($payload);
             } else {
                 $payload['empresa_id'] = (int) $this->selectedEmpresaId;
-                $payload['created_by'] = Auth::id();
+                $payload['created_by'] = $this->actorId();
                 $empresaEquipo = EmpresaEquipo::query()->create($payload);
             }
 
@@ -812,23 +853,66 @@ class Formulario extends Component
         $this->equipmentSuggestions = [];
         $this->equipmentModal = false;
         $this->refreshInspectionContext();
-        $this->dispatch('swal', type: 'success', title: 'Equipo registrado', text: 'El equipo se guardo correctamente para la empresa seleccionada.');
+        $this->dispatch('swal', type: 'success', title: 'Equipo registroo', text: 'El equipo se guardo correctamente para la empresa seleccionada.');
     }
 
     public function updatedResponsesInput($value, string $name): void
     {
-        if (!preg_match('/^responsesInput\.(\d+)\.(ingreso|salida)$/', $name, $matches)) {
+        if (!preg_match('/^(?:responsesInput\.)?(\d+)\.(ingreso|salida)$/', $name, $matches)) {
             return;
         }
 
         $responseId = (int) $matches[1];
-        $subgroupKey = $this->responseSubgroupMap[$responseId] ?? null;
-        if (!$subgroupKey) {
+        $this->persistResponse($responseId);
+    }
+
+    public function selectQuestionCategory(int $categoriaId): void
+    {
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === $categoriaId);
+
+        if (!$selectedCategory) {
             return;
         }
 
-        $this->pendingSubgroups[$subgroupKey] = true;
-        $this->refreshQuestionnaireVisualState();
+        $this->uiInspectionTab = 'questions';
+        $this->uiActiveQuestionCategoryId = (int) $selectedCategory['id'];
+        $firstSubcategoryId = isset($selectedCategory['subcategorias'][0]['id'])
+            ? (int) $selectedCategory['subcategorias'][0]['id']
+            : null;
+        $this->uiActiveQuestionSubcategoryId = $firstSubcategoryId;
+    }
+
+    public function selectQuestionSubcategory(int $subCategoriaId): void
+    {
+        if (!$this->uiActiveQuestionCategoryId) {
+            return;
+        }
+
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === (int) $this->uiActiveQuestionCategoryId);
+        if (!$selectedCategory) {
+            return;
+        }
+
+        $exists = collect($selectedCategory['subcategorias'] ?? [])
+            ->contains(fn (array $sub) => (int) $sub['id'] === $subCategoriaId);
+        if (!$exists) {
+            return;
+        }
+
+        $this->uiInspectionTab = 'questions';
+        $this->uiActiveQuestionSubcategoryId = $subCategoriaId;
+    }
+
+    public function selectInspectionFilesTab(): void
+    {
+        $this->uiInspectionTab = 'files';
+    }
+
+    public function selectInspectionQuestionsTab(): void
+    {
+        $this->uiInspectionTab = 'questions';
     }
 
     public function startInspection(): void
@@ -851,23 +935,25 @@ class Formulario extends Component
                 'estado_inspeccion' => 'en_inspeccion',
                 'certificado_generado' => 0,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $detalle = $inspeccion->detalleInspecciones()->create([
                 'inespeccion_numero' => 1,
                 'inspeccion_estado' => 'en_inspeccion',
                 'inspeccion_fecha' => $now,
+                'severidad' => null,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
-            $this->seedCuestionarioRespuestas($detalle);
+            $this->seedCuestionarioRespuesta($detalle);
         });
 
         $this->refreshInspectionContext();
+        $this->uiStep = 2;
         $this->dispatch('inspection-state', started: true, inspectionFinalized: false, step: 2);
         $this->dispatch('swal', type: 'success', title: 'Inspeccion iniciada', text: 'La inspeccion se inicio correctamente.');
     }
@@ -888,37 +974,86 @@ class Formulario extends Component
             return;
         }
 
-        DB::transaction(function () use ($inspeccion): void {
+        $lastDetail = $inspeccion->detalleInspecciones()->orderByDesc('inespeccion_numero')->first();
+        if (!$lastDetail || (string) $lastDetail->inspeccion_estado !== 'observado') {
+            return;
+        }
+
+        $dueAt = $lastDetail->correcion_vigencia_fecha ? Carbon::parse($lastDetail->correcion_vigencia_fecha)->endOfDay() : null;
+        if (!$dueAt || $dueAt->isPast()) {
+            $this->dispatch('swal', type: 'warning', title: 'Plazo vencido', text: 'La vigencia para subsanar observaciones vencio. Debes crear una nueva inspeccion.');
+            return;
+        }
+
+        DB::transaction(function () use ($inspeccion, $lastDetail): void {
             $nextNumber = ((int) ($inspeccion->detalleInspecciones()->max('inespeccion_numero') ?? 0)) + 1;
             $inspeccion->update([
-                'estado_inspeccion' => 'en_inspeccion',
+                'estado_inspeccion' => 'subsanacion',
                 'fecha_ingreso' => now()->toDateString(),
-                'updated_by' => Auth::id(),
+                'updated_by' => $this->actorId(),
             ]);
 
             $detalle = $inspeccion->detalleInspecciones()->create([
                 'inespeccion_numero' => $nextNumber,
-                'inspeccion_estado' => 'en_inspeccion',
+                'inspeccion_estado' => 'subsanacion',
                 'inspeccion_fecha' => now(),
+                'severidad' => null,
                 'estado' => 1,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
 
-            $this->seedCuestionarioRespuestas($detalle);
+            $this->copyCuestionarioRespuestaFromDetalle($detalle, (int) $lastDetail->id);
         });
 
         $this->refreshInspectionContext();
+        $this->uiStep = 2;
         $this->dispatch('inspection-state', started: true, inspectionFinalized: false, step: 2);
         $this->dispatch('swal', type: 'success', title: 'Reinspeccion iniciada', text: 'Se inicio la inspeccion de observaciones.');
     }
 
-    public function enableInspectionEdition(): void
+    public function continueInspection(): void
     {
-        if (!$this->selectedEmpresaEquipoId) {
+        if (!$this->selectedEmpresaEquipoId || !$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
             return;
         }
 
+        $this->uiStep = 2;
+        $this->dispatch('inspection-state', started: true, inspectionFinalized: false, step: 2);
+    }
+
+    public function viewInspection(): void
+    {
+        if (!$this->selectedEmpresaEquipoId || !$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $this->uiStep = 2;
+        $this->dispatch('inspection-state', started: true, inspectionFinalized: true, step: 2);
+    }
+
+    public function enableInspectionEdition(): void
+    {
+        if (!$this->selectedEmpresaEquipoId || !$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        Inspeccion::query()
+            ->whereKey($this->currentInspeccionId)
+            ->update([
+                'estado_inspeccion' => 'en_inspeccion',
+                'updated_by' => $this->actorId(),
+            ]);
+
+        DetalleInspeccion::query()
+            ->whereKey($this->currentDetalleInspeccionId)
+            ->update([
+                'inspeccion_estado' => 'en_inspeccion',
+                'updated_by' => $this->actorId(),
+            ]);
+
+        $this->refreshInspectionContext();
+        $this->uiStep = 2;
         $this->dispatch('inspection-state', started: true, inspectionFinalized: false, step: 2);
         $this->dispatch('swal', type: 'info', title: 'Edicion habilitada', text: 'Puedes continuar con la edicion de la inspeccion.', toast: true, timer: 2400);
     }
@@ -955,36 +1090,20 @@ class Formulario extends Component
 
     public function saveSubgroup(string $subgroupKey): void
     {
-        if (!($this->pendingSubgroups[$subgroupKey] ?? false)) {
-            return;
-        }
-
         $responseIds = $this->subgroupResponseIds[$subgroupKey] ?? [];
         if ($responseIds === []) {
             return;
         }
 
         foreach ($responseIds as $responseId) {
-            $input = $this->responsesInput[$responseId] ?? [];
-            CuestionarioRespuesta::query()
-                ->whereKey($responseId)
-                ->update([
-                    'ingreso_respuesta' => $this->normalizeNullableText($input['ingreso'] ?? null),
-                    'salida_respuesta' => $this->normalizeNullableText($input['salida'] ?? null),
-                    'updated_by' => Auth::id(),
-                ]);
+            $this->persistResponse((int) $responseId);
         }
-
-        $this->pendingSubgroups[$subgroupKey] = false;
-        $this->refreshQuestionnaireVisualState();
     }
 
     public function flushPendingResponses(): void
     {
-        foreach ($this->pendingSubgroups as $key => $isPending) {
-            if ($isPending) {
-                $this->saveSubgroup((string) $key);
-            }
+        foreach (array_keys($this->responsesInput) as $responseId) {
+            $this->persistResponse((int) $responseId);
         }
     }
 
@@ -998,23 +1117,10 @@ class Formulario extends Component
 
     public function openObservationList(int $responseId): void
     {
-        $observations = CuestionarioRespuestaObservacion::query()
-            ->where('cuestionario_respuesta_id', $responseId)
-            ->latest('id')
-            ->get()
-            ->map(fn (CuestionarioRespuestaObservacion $obs) => [
-                'id' => (int) $obs->id,
-                'momento' => match ((string) $obs->momento) {
-                    'ingreso' => 'Ingreso',
-                    'salida' => 'Salida',
-                    default => 'Ambos',
-                },
-                'descripcion' => (string) $obs->descripcion,
-                'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
-            ])
-            ->all();
+        $this->activeObservationResponseId = $responseId;
+        $observations = $this->buildObservationList($responseId);
 
-        $this->dispatch('observation-list-ready', observations: $observations);
+        $this->dispatch('observation-list-ready', observations: $observations, responseId: $responseId);
         $this->skipRender();
     }
 
@@ -1042,17 +1148,52 @@ class Formulario extends Component
             'descripcion' => trim((string) $data['descripcion']),
             'momento' => (string) $data['momento'],
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         if ($this->currentDetalleInspeccionId) {
             $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
         }
+        $this->refreshCertificateState();
 
         $this->observationForm = $this->defaultObservationForm();
         $this->dispatch('observation-saved');
         $this->dispatch('swal', type: 'success', title: 'Observacion registrada', text: 'La observacion se guardo correctamente.', toast: true, timer: 2200);
+    }
+
+    public function deleteObservationFromModal(int $observationId, bool $dispatchObservationList = true): void
+    {
+        $observation = CuestionarioRespuestaObservacion::query()
+            ->whereKey($observationId)
+            ->where('estado', 1)
+            ->first();
+
+        if (!$observation) {
+            return;
+        }
+
+        $responseId = (int) $observation->cuestionario_respuesta_id;
+        $observation->update([
+            'estado' => 0,
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
+        ]);
+        $observation->delete();
+
+        if ($this->currentDetalleInspeccionId) {
+            $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
+        }
+
+        if ($dispatchObservationList) {
+            $this->dispatch(
+                'observation-list-ready',
+                observations: $this->buildObservationList($responseId),
+                responseId: $responseId
+            );
+        }
+        $this->refreshCertificateState();
+        $this->dispatch('swal', type: 'success', title: 'Observacion eliminada', text: 'La observacion fue eliminada correctamente.', toast: true, timer: 1800);
     }
 
     public function prepareCustomQuestionModal(int $categoriaId, int $subCategoriaId, string $groupKey): void
@@ -1067,7 +1208,7 @@ class Formulario extends Component
     public function saveCustomQuestion(): void
     {
         if (!$this->currentDetalleInspeccionId) {
-            $this->dispatch('swal', type: 'warning', title: 'Inspección no disponible', text: 'Primero debes iniciar una inspección para registrar preguntas adicionales.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no disponible', text: 'Primero debes iniciar una inspeccion para registrar preguntas adicionales.');
             return;
         }
 
@@ -1090,21 +1231,21 @@ class Formulario extends Component
             'ingreso_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['ingreso_respuesta'] ?? null),
             'salida_respuesta' => $this->normalizeNullableText($data['customQuestionForm']['salida_respuesta'] ?? null),
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         $groupKey = (string) ($this->customQuestionGroupKey ?? '');
         $this->loadQuestionnaireForDetalle($this->currentDetalleInspeccionId);
         $this->customQuestionForm = $this->defaultCustomQuestionForm();
         $this->dispatch('custom-question-saved', groupKey: $groupKey);
-        $this->dispatch('swal', type: 'success', title: 'Pregunta adicional registrada', text: 'La pregunta se agregó correctamente.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Pregunta adicional registrada', text: 'La pregunta se agrego correctamente.', toast: true, timer: 2200);
     }
 
     public function attachInspectionFile(): void
     {
         if (!$this->currentInspeccionId || !$this->selectedEmpresaEquipoId || !$this->currentDetalleInspeccionId) {
-            $this->dispatch('swal', type: 'warning', title: 'Inspección no disponible', text: 'Primero debes tener una inspección activa para adjuntar archivos.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no disponible', text: 'Primero debes tener una inspeccion activa para adjuntar archivos.');
             return;
         }
 
@@ -1122,7 +1263,7 @@ class Formulario extends Component
             ->find($this->currentInspeccionId);
 
         if (!$inspeccion) {
-            $this->dispatch('swal', type: 'warning', title: 'Inspección no encontrada', text: 'No se pudo adjuntar el archivo porque la inspección no está disponible.');
+            $this->dispatch('swal', type: 'warning', title: 'Inspeccion no encontrada', text: 'No se pudo adjuntar el archivo porque la inspeccion no esta disponible.');
             return;
         }
 
@@ -1157,21 +1298,21 @@ class Formulario extends Component
 
         InspeccionArchivoEquipo::query()->create([
             'inspeccion_id' => (int) $inspeccion->id,
-            'archivo_descripcion' => trim((string) $data['inspectionFileForm']['descripcion']),
+            'archivo_descripcion' => $this->sanitizeStorageText((string) $data['inspectionFileForm']['descripcion']),
             'archivo_autogenerado' => 0,
             'archivo_tipo' => $archivoTipo,
             'archivo_ruta' => $targetRelativePath . '/' . $fileName,
             'archivo_origen' => 'original',
             'mostrar_certificado' => (bool) ($data['inspectionFileForm']['mostrar_certificado'] ?? false),
             'estado' => 1,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
         ]);
 
         $this->inspectionUploadFile = null;
         $this->inspectionFileForm = $this->defaultInspectionFileForm();
         $this->loadInspectionFiles($this->currentInspeccionId);
-        $this->dispatch('swal', type: 'success', title: 'Archivo adjuntado', text: 'El archivo se registró correctamente en la inspección.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Archivo adjuntado', text: 'El archivo se registro correctamente en la inspeccion.', toast: true, timer: 2200);
     }
 
     public function updatedInspectionUploadFile(): void
@@ -1211,7 +1352,8 @@ class Formulario extends Component
         }
 
         $archivo->update([
-            'deleted_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
         ]);
         $archivo->delete();
 
@@ -1221,7 +1363,227 @@ class Formulario extends Component
         }
 
         $this->loadInspectionFiles($this->currentInspeccionId);
-        $this->dispatch('swal', type: 'success', title: 'Archivo eliminado', text: 'El archivo se eliminó correctamente.', toast: true, timer: 2200);
+        $this->dispatch('swal', type: 'success', title: 'Archivo eliminado', text: 'El archivo se elimino correctamente.', toast: true, timer: 2200);
+    }
+
+    public function toggleInspectionFileCertificate(int $archivoId, $mostrar): void
+    {
+        $archivo = InspeccionArchivoEquipo::query()
+            ->where('inspeccion_id', $this->currentInspeccionId)
+            ->find($archivoId);
+
+        if (!$archivo) {
+            return;
+        }
+
+        $archivo->update([
+            'mostrar_certificado' => filter_var($mostrar, FILTER_VALIDATE_BOOL),
+            'updated_by' => $this->actorId(),
+        ]);
+
+        $this->loadInspectionFiles($this->currentInspeccionId);
+    }
+
+    public function finalizeInspection(): void
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $this->refreshCertificateState();
+        if ($this->observedParametersCount > 0 && !$this->remediationDueDate) {
+            $this->addError('remediationDueDate', 'Debes indicar la fecha plazo para subsanar observaciones.');
+            return;
+        }
+
+        DB::transaction(function (): void {
+            $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+            $detalle = DetalleInspeccion::query()->findOrFail($this->currentDetalleInspeccionId);
+
+            if ($inspeccion->certificado_generado) {
+                Certificado::query()
+                    ->where('inspeccion_id', $inspeccion->id)
+                    ->where('anulado', 0)
+                    ->update([
+                        'anulado' => 1,
+                        'motivo_anulacion' => 'Anulado por edicion de inspeccion',
+                        'updated_by' => $this->actorId(),
+                    ]);
+
+                $inspeccion->update([
+                    'certificado_generado' => 0,
+                    'updated_by' => $this->actorId(),
+                ]);
+            }
+
+            $newState = $this->observedParametersCount > 0 ? 'observado' : 'aprobado';
+            $detalle->update([
+                'inspeccion_estado' => $newState,
+                'correcion_vigencia_fecha' => $this->observedParametersCount > 0 ? $this->remediationDueDate : null,
+                'inspeccion_fecha' => now(),
+                'updated_by' => $this->actorId(),
+            ]);
+
+            $inspeccion->update([
+                'estado_inspeccion' => $newState,
+                'fecha_salida' => now()->toDateString(),
+                'updated_by' => $this->actorId(),
+            ]);
+        });
+
+        $this->ensureDetailReportPdf(true);
+        $this->refreshInspectionContext();
+        $this->refreshCertificateState();
+        $this->dispatch('swal', type: 'success', title: 'Inspeccion finalizada', text: 'La inspeccion se finalizo correctamente.');
+    }
+
+    public function generateInspectionCertificate(): void
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $this->refreshCertificateState();
+        if ($this->observedParametersCount > 0) {
+            $this->dispatch('swal', type: 'warning', title: 'No disponible', text: 'No se puede generar certificado mientras existan parametros observados.');
+            return;
+        }
+
+        $createdNewCertificate = false;
+        DB::transaction(function () use (&$createdNewCertificate): void {
+            $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+            $detalle = DetalleInspeccion::query()->findOrFail($this->currentDetalleInspeccionId);
+            $existingCert = Certificado::query()
+                ->where('inspeccion_id', (int) $inspeccion->id)
+                ->where('anulado', 0)
+                ->latest('id')
+                ->first();
+
+            if ($existingCert) {
+                if (!(bool) $inspeccion->certificado_generado) {
+                    $inspeccion->update([
+                        'certificado_generado' => 1,
+                        'updated_by' => $this->actorId(),
+                    ]);
+                }
+                return;
+            }
+            $tipoCertificadoId = $this->resolveTipoCertificadoId();
+
+            $pdfRelative = app(InspeccionService::class)
+                ->generateInspectionCertificatePdf($inspeccion, $detalle, (int) $this->observedParametersCount);
+            if (!$pdfRelative) {
+                throw new \RuntimeException('No se pudo generar el certificado.');
+            }
+            $numero = $this->nextCertificateNumber();
+
+            Certificado::query()->create([
+                'tipo_certificado_id' => $tipoCertificadoId,
+                'inspeccion_id' => (int) $inspeccion->id,
+                'detalle_inspeccion_id' => (int) $detalle->id,
+                'numero' => $numero,
+                'fecha_emision' => now()->toDateString(),
+                'fecha_vencimiento' => now()->addYear()->toDateString(),
+                'pdf_ruta' => $pdfRelative,
+                'anulado' => 0,
+                'estado' => 1,
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
+            ]);
+
+            $inspeccion->update([
+                'certificado_generado' => 1,
+                'estado_inspeccion' => 'aprobado',
+                'updated_by' => $this->actorId(),
+            ]);
+
+            $detalle->update([
+                'inspeccion_estado' => 'aprobado',
+                'updated_by' => $this->actorId(),
+            ]);
+
+            InspeccionArchivoEquipo::query()->create([
+                'inspeccion_id' => (int) $inspeccion->id,
+                'archivo_descripcion' => $this->sanitizeStorageText('Certificado de inspeccion ' . $numero),
+                'archivo_autogenerado' => 1,
+                'archivo_tipo' => 'pdf',
+                'archivo_ruta' => $pdfRelative,
+                'archivo_origen' => 'autogenerado',
+                'mostrar_certificado' => 1,
+                'estado' => 1,
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
+            ]);
+            $createdNewCertificate = true;
+        });
+
+        $this->refreshInspectionContext();
+        $this->refreshCertificateState();
+        if ($createdNewCertificate) {
+            $this->dispatch('swal', type: 'success', title: 'Certificado generado', text: 'Se genero y registro el certificado correctamente.');
+        } else {
+            $this->dispatch('swal', type: 'info', title: 'Certificado existente', text: 'El certificado ya existe en la base de datos y se cargo para su consulta.', toast: true, timer: 2200);
+        }
+    }
+
+    public function openDetailReportPreview(): void
+    {
+        $relative = $this->ensureDetailReportPdf();
+        if (!$relative) {
+            return;
+        }
+
+        $this->inspectionFilePreview = [
+            'id' => 0,
+            'descripcion' => 'Reporte detallado de inspeccion',
+            'tipo' => 'pdf',
+            'url' => asset($relative),
+            'origen' => 'autogenerado',
+            'mostrar_certificado' => false,
+        ];
+        $this->inspectionFilePreviewModal = true;
+    }
+
+    public function openObservedParametersSummary(): void
+    {
+        if (!$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $items = CuestionarioRespuesta::query()
+            ->with([
+                'pregunta:id,pregunta_enunciado',
+                'observacionesAdjuntas' => fn ($q) => $q->latest('id'),
+            ])
+            ->where('detalle_inspeccion_id', $this->currentDetalleInspeccionId)
+            ->whereHas('observacionesAdjuntas')
+            ->orderBy('id')
+            ->get()
+            ->map(function (CuestionarioRespuesta $respuesta): array {
+                $parametro = (string) ($respuesta->pregunta?->pregunta_enunciado ?: $respuesta->cuestionario_pregunta_personalizada ?: 'Parametro');
+                $observaciones = $respuesta->observacionesAdjuntas->map(function (CuestionarioRespuestaObservacion $obs): array {
+                    return [
+                        'id' => (int) $obs->id,
+                        'momento' => match ((string) $obs->momento) {
+                            'ingreso' => 'Ingreso',
+                            'salida' => 'Salida',
+                            default => 'Ambos',
+                        },
+                        'descripcion' => (string) $obs->descripcion,
+                        'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
+                    ];
+                })->values()->all();
+
+                return [
+                    'parametro' => $parametro,
+                    'observaciones' => $observaciones,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $this->dispatch('observed-parameters-ready', items: $items);
+        $this->skipRender();
     }
 
     private function saveCompanyBaseData(): bool
@@ -1263,13 +1625,13 @@ class Formulario extends Component
             'email' => trim((string) ($data['empresaForm']['email'] ?? '')) ?: null,
             'direccion' => trim((string) ($data['empresaForm']['direccion'] ?? '')) ?: null,
             'estado' => 1,
-            'updated_by' => Auth::id(),
+            'updated_by' => $this->actorId(),
         ];
 
         if ($this->draftEmpresaId) {
             Empresa::query()->whereKey($this->draftEmpresaId)->update($payload);
         } else {
-            $payload['created_by'] = Auth::id();
+            $payload['created_by'] = $this->actorId();
             $empresa = Empresa::query()->create($payload);
             $this->draftEmpresaId = (int) $empresa->id;
         }
@@ -1341,6 +1703,10 @@ class Formulario extends Component
 
     private function persistCompanyContacts(Empresa $empresa): void
     {
+        EmpresaContacto::query()->where('empresa_id', $empresa->id)->update([
+            'updated_by' => $this->actorId(),
+            'deleted_by' => $this->actorId(),
+        ]);
         EmpresaContacto::query()->where('empresa_id', $empresa->id)->delete();
         foreach ($this->companyContacts as $index => $contacto) {
             $persona = Persona::query()->updateOrCreate(
@@ -1353,7 +1719,8 @@ class Formulario extends Component
                     'email' => trim((string) ($contacto['email'] ?? '')) ?: null,
                     'telefono' => trim((string) ($contacto['telefono'] ?? '')) ?: null,
                     'estado' => 1,
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]
             );
 
@@ -1363,7 +1730,8 @@ class Formulario extends Component
                 'email' => trim((string) ($contacto['email'] ?? '')) ?: null,
                 'telefono' => trim((string) ($contacto['telefono'] ?? '')) ?: null,
                 'estado' => $index === 0 ? 1 : 0,
-                'created_by' => Auth::id(),
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
             ]);
         }
     }
@@ -1527,7 +1895,7 @@ class Formulario extends Component
         }
     }
 
-    private function seedCuestionarioRespuestas(DetalleInspeccion $detalle): void
+    private function seedCuestionarioRespuesta(DetalleInspeccion $detalle): void
     {
         $empresaEquipo = EmpresaEquipo::query()->with('equipo')->find($this->selectedEmpresaEquipoId);
         $equipo = $empresaEquipo?->equipo;
@@ -1569,16 +1937,46 @@ class Formulario extends Component
                     'cuestionario_categoria_id' => (int) $pregunta->cuestionario_categoria_id,
                     'cuestionario_sub_categoria_id' => (int) $pregunta->cuestionario_sub_categoria_id,
                     'estado' => 1,
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
+                    'created_by' => $this->actorId(),
+                    'updated_by' => $this->actorId(),
                 ]
             );
+        }
+    }
+
+    private function copyCuestionarioRespuestaFromDetalle(DetalleInspeccion $targetDetalle, int $sourceDetalleId): void
+    {
+        $sourceRows = CuestionarioRespuesta::query()
+            ->where('detalle_inspeccion_id', $sourceDetalleId)
+            ->orderBy('id')
+            ->get();
+
+        if ($sourceRows->isEmpty()) {
+            $this->seedCuestionarioRespuesta($targetDetalle);
+            return;
+        }
+
+        foreach ($sourceRows as $row) {
+            CuestionarioRespuesta::query()->create([
+                'detalle_inspeccion_id' => (int) $targetDetalle->id,
+                'cuestionario_categoria_id' => (int) $row->cuestionario_categoria_id,
+                'cuestionario_sub_categoria_id' => (int) $row->cuestionario_sub_categoria_id,
+                'cuestionario_pregunta_id' => $row->cuestionario_pregunta_id ? (int) $row->cuestionario_pregunta_id : null,
+                'cuestionario_pregunta_personalizada' => $this->normalizeNullableText($row->cuestionario_pregunta_personalizada),
+                'ingreso_respuesta' => $this->normalizeNullableText($row->ingreso_respuesta),
+                'salida_respuesta' => $this->normalizeNullableText($row->salida_respuesta),
+                'estado_respuesta' => $this->normalizeNullableText($row->estado_respuesta),
+                'estado' => 1,
+                'created_by' => $this->actorId(),
+                'updated_by' => $this->actorId(),
+            ]);
         }
     }
 
     private function loadQuestionnaireForDetalle(?int $detalleInspeccionId): void
     {
         $this->questionnaireGroups = [];
+        $this->questionnaireCategories = [];
         $this->responsesInput = [];
         $this->responseMeta = [];
         $this->responseSubgroupMap = [];
@@ -1586,7 +1984,9 @@ class Formulario extends Component
         $this->pendingSubgroups = [];
 
         if (!$detalleInspeccionId) {
-            $this->uiOpenQuestionGroup = null;
+            $this->uiActiveQuestionCategoryId = null;
+            $this->uiActiveQuestionSubcategoryId = null;
+            $this->uiInspectionTab = 'questions';
             return;
         }
 
@@ -1604,6 +2004,7 @@ class Formulario extends Component
             ->get();
 
         $groups = [];
+        $categories = [];
         foreach ($respuestas as $respuesta) {
             $groupKey = $respuesta->cuestionario_categoria_id . '-' . $respuesta->cuestionario_sub_categoria_id;
             if (!isset($groups[$groupKey])) {
@@ -1614,8 +2015,6 @@ class Formulario extends Component
                     'categoria' => $respuesta->categoria?->descripcion ?: 'Sin categoria',
                     'subcategoria' => $respuesta->subCategoria?->descripcion ?: 'Sin subcategoria',
                     'responses' => [],
-                    'completed' => false,
-                    'pending' => false,
                 ];
             }
 
@@ -1631,6 +2030,9 @@ class Formulario extends Component
                 'salida_tipo' => $salidaType,
                 'salida_valores' => $this->parseRespuestaValores((string) ($respuesta->pregunta?->salida_respuesta_valores ?? '')),
                 'observaciones_count' => (int) ($respuesta->observaciones_adjuntas_count ?? 0),
+                'categoria_id' => (int) $respuesta->cuestionario_categoria_id,
+                'subcategoria_id' => (int) $respuesta->cuestionario_sub_categoria_id,
+                'group_key' => $groupKey,
             ];
 
             $groups[$groupKey]['responses'][] = $item;
@@ -1642,14 +2044,52 @@ class Formulario extends Component
             $this->responseSubgroupMap[(int) $respuesta->id] = $groupKey;
             $this->subgroupResponseIds[$groupKey][] = (int) $respuesta->id;
             $this->pendingSubgroups[$groupKey] = false;
+
+            $categoriaId = (int) $respuesta->cuestionario_categoria_id;
+            $subCategoriaId = (int) $respuesta->cuestionario_sub_categoria_id;
+            if (!isset($categories[$categoriaId])) {
+                $categories[$categoriaId] = [
+                    'id' => $categoriaId,
+                    'nombre' => $respuesta->categoria?->descripcion ?: 'Sin categoria',
+                    'preguntas' => 0,
+                    'subcategorias' => [],
+                ];
+            }
+            $categories[$categoriaId]['preguntas']++;
+            if (!isset($categories[$categoriaId]['subcategorias'][$subCategoriaId])) {
+                $categories[$categoriaId]['subcategorias'][$subCategoriaId] = [
+                    'id' => $subCategoriaId,
+                    'nombre' => $respuesta->subCategoria?->descripcion ?: 'Sin subcategoria',
+                    'key' => $groupKey,
+                    'preguntas' => 0,
+                    'has_observaciones' => false,
+                ];
+            }
+            $categories[$categoriaId]['subcategorias'][$subCategoriaId]['preguntas']++;
+            if ((int) ($respuesta->observaciones_adjuntas_count ?? 0) > 0) {
+                $categories[$categoriaId]['subcategorias'][$subCategoriaId]['has_observaciones'] = true;
+            }
         }
 
         $this->questionnaireGroups = array_values($groups);
-        $availableKeys = array_column($this->questionnaireGroups, 'key');
-        if ($this->uiOpenQuestionGroup === null || !in_array($this->uiOpenQuestionGroup, $availableKeys, true)) {
-            $this->uiOpenQuestionGroup = $this->questionnaireGroups[0]['key'] ?? null;
+        $this->questionnaireCategories = array_values(array_map(function (array $cat): array {
+            $cat['subcategorias'] = array_values($cat['subcategorias']);
+            return $cat;
+        }, $categories));
+
+        $availableCategoryIds = array_map(fn (array $cat): int => (int) $cat['id'], $this->questionnaireCategories);
+        if ($this->uiActiveQuestionCategoryId === null || !in_array((int) $this->uiActiveQuestionCategoryId, $availableCategoryIds, true)) {
+            $this->uiActiveQuestionCategoryId = $this->questionnaireCategories[0]['id'] ?? null;
         }
-        $this->refreshQuestionnaireVisualState();
+
+        $selectedCategory = collect($this->questionnaireCategories)
+            ->first(fn (array $cat) => (int) $cat['id'] === (int) $this->uiActiveQuestionCategoryId);
+        $availableSubcategoryIds = collect($selectedCategory['subcategorias'] ?? [])
+            ->map(fn (array $sub): int => (int) $sub['id'])
+            ->all();
+        if ($this->uiActiveQuestionSubcategoryId === null || !in_array((int) $this->uiActiveQuestionSubcategoryId, $availableSubcategoryIds, true)) {
+            $this->uiActiveQuestionSubcategoryId = $selectedCategory['subcategorias'][0]['id'] ?? null;
+        }
     }
 
     private function parseRespuestaValores(string $raw): array
@@ -1673,40 +2113,72 @@ class Formulario extends Component
         return $options;
     }
 
-    private function isResponseComplete(int $responseId): bool
+    private function persistResponse(int $responseId): void
     {
-        $meta = $this->responseMeta[$responseId] ?? null;
-        $input = $this->responsesInput[$responseId] ?? null;
-        if (!$meta || !$input) {
-            return false;
+        if (!isset($this->responsesInput[$responseId])) {
+            return;
         }
 
-        $ingresoOk = !$meta['ingreso_preguntar'] || trim((string) ($input['ingreso'] ?? '')) !== '';
-        $salidaOk = !$meta['salida_preguntar'] || trim((string) ($input['salida'] ?? '')) !== '';
-        return $ingresoOk && $salidaOk;
+        $input = $this->responsesInput[$responseId] ?? [];
+        CuestionarioRespuesta::query()
+            ->whereKey($responseId)
+            ->update([
+                'ingreso_respuesta' => $this->normalizeNullableText($input['ingreso'] ?? null),
+                'salida_respuesta' => $this->normalizeNullableText($input['salida'] ?? null),
+                'updated_by' => $this->actorId(),
+            ]);
     }
 
-    private function refreshQuestionnaireVisualState(): void
+    private function buildObservationList(int $responseId): array
     {
-        foreach ($this->questionnaireGroups as $index => $group) {
-            $ids = $this->subgroupResponseIds[$group['key']] ?? [];
-            $allDone = !empty($ids);
-            foreach ($ids as $id) {
-                if (!$this->isResponseComplete((int) $id)) {
-                    $allDone = false;
-                    break;
-                }
-            }
-
-            $this->questionnaireGroups[$index]['completed'] = $allDone;
-            $this->questionnaireGroups[$index]['pending'] = (bool) ($this->pendingSubgroups[$group['key']] ?? false);
-        }
+        return CuestionarioRespuestaObservacion::query()
+            ->where('cuestionario_respuesta_id', $responseId)
+            ->where('estado', 1)
+            ->latest('id')
+            ->get()
+            ->map(fn (CuestionarioRespuestaObservacion $obs) => [
+                'id' => (int) $obs->id,
+                'momento' => match ((string) $obs->momento) {
+                    'ingreso' => 'Ingreso',
+                    'salida' => 'Salida',
+                    default => 'Ambos',
+                },
+                'descripcion' => (string) $obs->descripcion,
+                'fecha' => $obs->created_at ? $obs->created_at->format('d/m/Y H:i') : '-',
+            ])
+            ->all();
     }
 
     private function normalizeNullableText($value): ?string
     {
         $text = trim((string) ($value ?? ''));
         return $text === '' ? null : $text;
+    }
+
+    private function sanitizeStorageText(string $value): string
+    {
+        $ascii = Str::ascii(trim($value));
+        $ascii = preg_replace('/[^A-Za-z0-9\\s\\-_.]/', '', $ascii) ?? '';
+        $ascii = preg_replace('/\\s+/', ' ', $ascii) ?? '';
+        return trim($ascii) !== '' ? trim($ascii) : 'archivo';
+    }
+
+    private function actorId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return null;
+        }
+
+        $id = $user->getAuthIdentifier();
+        if ($id === null && isset($user->id)) {
+            $id = $user->id;
+        }
+        if ($id === null && isset($user->user_id)) {
+            $id = $user->user_id;
+        }
+
+        return $id !== null ? (int) $id : null;
     }
 
     private function defaultCustomQuestionForm(): array
@@ -1730,6 +2202,474 @@ class Formulario extends Component
         }
 
         return 1;
+    }
+
+    private function refreshCertificateState(): void
+    {
+        $this->observedParametersCount = 0;
+        $this->certificateStatusLabel = 'en proceso';
+        $this->inspectionFinalized = false;
+        $this->certificateGenerated = false;
+        $this->canFinalizeInspection = false;
+        $this->canGenerateCertificate = false;
+        $this->canEditInspectionFromCertificate = false;
+        $this->finalizedAtLabel = null;
+        $this->certificatePdfUrl = null;
+        $this->reportPdfUrl = null;
+        $this->remediationDueDate = null;
+
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return;
+        }
+
+        $inspeccion = Inspeccion::query()
+            ->with(['ultimoDetalle', 'certificados' => fn ($q) => $q->orderByDesc('id')])
+            ->find($this->currentInspeccionId);
+
+        if (!$inspeccion) {
+            return;
+        }
+
+        $detalle = DetalleInspeccion::query()->find($this->currentDetalleInspeccionId);
+        if (!$detalle) {
+            return;
+        }
+
+        $this->observedParametersCount = CuestionarioRespuesta::query()
+            ->where('detalle_inspeccion_id', $detalle->id)
+            ->whereHas('observacionesAdjuntas')
+            ->count();
+
+        $state = (string) $detalle->inspeccion_estado;
+        $this->certificateStatusLabel = match ($state) {
+            'aprobado' => 'finalizado',
+            'observado', 'subsanacion' => 'observado',
+            'anulado' => 'anulado',
+            'rechazado' => 'rechazado',
+            default => 'en proceso',
+        };
+
+        $this->inspectionFinalized = in_array($state, ['aprobado', 'observado', 'rechazado', 'anulado'], true);
+        $this->canFinalizeInspection = in_array($state, ['en_inspeccion', 'subsanacion'], true);
+        $this->canEditInspectionFromCertificate = (bool) $inspeccion->certificado_generado;
+
+        $latestCert = Certificado::query()
+            ->where('inspeccion_id', $inspeccion->id)
+            ->where('anulado', 0)
+            ->latest('id')
+            ->first();
+
+        $this->certificateGenerated = (bool) $inspeccion->certificado_generado && (bool) $latestCert;
+        $this->canGenerateCertificate = $this->inspectionFinalized && $this->observedParametersCount === 0 && !$this->certificateGenerated;
+        $this->finalizedAtLabel = $detalle->inspeccion_fecha ? Carbon::parse($detalle->inspeccion_fecha)->format('d/m/Y H:i') : null;
+        $this->certificatePdfUrl = $latestCert?->pdf_ruta ? asset((string) $latestCert->pdf_ruta) : null;
+
+        if ($this->remediationDueDate === null && $detalle->correcion_vigencia_fecha) {
+            $this->remediationDueDate = Carbon::parse($detalle->correcion_vigencia_fecha)->toDateString();
+        }
+
+        $reportPath = (string) ($detalle->pdf_ruta ?? '');
+        if ($reportPath === '') {
+            $latestReport = InspeccionArchivoEquipo::query()
+                ->where('inspeccion_id', $inspeccion->id)
+                ->where('archivo_origen', 'autogenerado')
+                ->where('archivo_descripcion', 'like', 'Reporte detallado%')
+                ->latest('id')
+                ->first();
+            $reportPath = (string) ($latestReport?->archivo_ruta ?? '');
+        }
+        $this->reportPdfUrl = $reportPath !== '' ? asset($reportPath) : null;
+    }
+
+    private function resolveTipoCertificadoId(): int
+    {
+        $tipo = TipoCertificado::query()->where('estado', 1)->orderBy('id')->first();
+        if ($tipo) {
+            return (int) $tipo->id;
+        }
+
+        $tipo = TipoCertificado::query()->create([
+            'tipo_certificado' => 'INSPECCION',
+            'estado' => 1,
+            'created_by' => $this->actorId(),
+            'updated_by' => $this->actorId(),
+        ]);
+
+        return (int) $tipo->id;
+    }
+
+    private function nextCertificateNumber(): string
+    {
+        $year = now()->format('Y');
+        $next = ((int) (Certificado::query()->max('id') ?? 0)) + 1;
+        return sprintf('CERT-%s-%06d', $year, $next);
+    }
+
+    private function ensureDetailReportPdf(bool $forceGenerate = false): ?string
+    {
+        if (!$this->currentInspeccionId || !$this->currentDetalleInspeccionId) {
+            return null;
+        }
+
+        $inspeccion = Inspeccion::query()->find((int) $this->currentInspeccionId);
+        $detalle = DetalleInspeccion::query()->find((int) $this->currentDetalleInspeccionId);
+        if (!$inspeccion || !$detalle) {
+            return null;
+        }
+
+        return app(InspeccionService::class)->generateDetailReportPdf(
+            $inspeccion,
+            $detalle,
+            $this->actorId(),
+            $forceGenerate
+        );
+    }
+
+    private function generateInspectionPdf(string $titleText, string $prefix): string
+    {
+        $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
+        $empresaEquipo = $inspeccion->empresaEquipo;
+        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
+        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
+        $numeroInspeccion = (string) $this->resolveInspectionNumber();
+
+        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
+        if ($folder === '') {
+            $folder = 'INSPECCION';
+        }
+
+        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetDirectory = public_path($targetRelativePath);
+        if (!File::exists($targetDirectory)) {
+            File::makeDirectory($targetDirectory, 0755, true);
+        }
+
+        $fileName = now()->format('YmdHis') . '_' . $prefix . '.pdf';
+        $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
+        File::put($absoluteFile, $this->buildSimplePdf($titleText));
+
+        return $targetRelativePath . '/' . $fileName;
+    }
+
+    private function generateCertificatePdf(Inspeccion $inspeccion, DetalleInspeccion $detalle): string
+    {
+        $empresaEquipo = $inspeccion->empresaEquipo;
+        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
+        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
+        $numeroInspeccion = (string) $this->resolveInspectionNumber();
+
+        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
+        if ($folder === '') {
+            $folder = 'INSPECCION';
+        }
+
+        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetDirectory = public_path($targetRelativePath);
+        if (!File::exists($targetDirectory)) {
+            File::makeDirectory($targetDirectory, 0755, true);
+        }
+
+        $templateImage = $this->prepareJpegForPdf(public_path('img/plantilla.png'));
+
+        $selectedFiles = InspeccionArchivoEquipo::query()
+            ->where('inspeccion_id', (int) $inspeccion->id)
+            ->where('estado', 1)
+            ->where('mostrar_certificado', 1)
+            ->orderBy('id')
+            ->get();
+
+        $summaryLines = [
+            'Certificado de inspeccion',
+            'Codigo: ' . (string) ($inspeccion->codigo_formateado ?: ('#' . $inspeccion->id)),
+            'Fecha de emision: ' . now()->format('d/m/Y H:i'),
+            'Empresa: ' . (string) ($inspeccion->empresa?->razon_social ?: 'No registrada'),
+            'Equipo: ' . (string) ($empresaEquipo?->descripcion ?: $inspeccion->equipo?->descripcion ?: 'No registrado'),
+            'Serie: ' . (string) ($empresaEquipo?->serie_codigo ?: '-'),
+            'Estado de inspeccion: ' . Str::title(str_replace('_', ' ', (string) $detalle->inspeccion_estado)),
+            'Observaciones del detalle: ' . (string) $this->observedParametersCount,
+            'Archivos visibles en certificado: ' . (string) $selectedFiles->count(),
+        ];
+
+        $pages = [[
+            'title' => 'CERTIFICADO DE INSPECCION',
+            'lines' => $summaryLines,
+            'image' => null,
+        ]];
+
+        foreach ($selectedFiles as $file) {
+            $absolutePath = public_path((string) $file->archivo_ruta);
+            $attachmentImage = $this->prepareJpegForPdf($absolutePath);
+            if ($attachmentImage) {
+                $pages[] = [
+                    'title' => 'ANEXO - ' . (string) ($file->archivo_descripcion ?: ('Archivo #' . $file->id)),
+                    'lines' => [
+                        'Archivo: ' . (string) ($file->archivo_descripcion ?: ('Adjunto #' . $file->id)),
+                        'Tipo: ' . strtoupper((string) ($file->archivo_tipo ?: 'archivo')),
+                    ],
+                    'image' => $attachmentImage['path'],
+                ];
+                continue;
+            }
+
+            $pages[] = [
+                'title' => 'ANEXO - ' . (string) ($file->archivo_descripcion ?: ('Archivo #' . $file->id)),
+                'lines' => [
+                    'Archivo no visualizable como imagen dentro del PDF.',
+                    'Descripcion: ' . (string) ($file->archivo_descripcion ?: '-'),
+                    'Ruta: ' . (string) ($file->archivo_ruta ?: '-'),
+                ],
+                'image' => null,
+            ];
+        }
+
+        $pdfBinary = $this->buildRichPdfDocument(
+            $pages,
+            $templateImage['path'] ?? null
+        );
+
+        $fileName = now()->format('YmdHis') . '_certificado.pdf';
+        $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
+        File::put($absoluteFile, $pdfBinary);
+
+        if ($templateImage && !empty($templateImage['cleanup'])) {
+            File::delete((string) $templateImage['path']);
+        }
+
+        foreach ($pages as $page) {
+            if (!empty($page['image']) && isset($page['image']) && str_contains((string) $page['image'], 'tmp_pdf_')) {
+                File::delete((string) $page['image']);
+            }
+        }
+
+        return $targetRelativePath . '/' . $fileName;
+    }
+
+    private function prepareJpegForPdf(string $absolutePath): ?array
+    {
+        if (!File::exists($absolutePath)) {
+            return null;
+        }
+
+        $imageInfo = @getimagesize($absolutePath);
+        if (!$imageInfo || empty($imageInfo['mime'])) {
+            return null;
+        }
+
+        $mime = strtolower((string) $imageInfo['mime']);
+        if ($mime === 'image/jpeg' || $mime === 'image/jpg') {
+            return [
+                'path' => $absolutePath,
+                'cleanup' => false,
+            ];
+        }
+
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            return null;
+        }
+
+        $raw = @file_get_contents($absolutePath);
+        if ($raw === false) {
+            return null;
+        }
+
+        $source = @imagecreatefromstring($raw);
+        if (!$source) {
+            return null;
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $canvas = imagecreatetruecolor($width, $height);
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        imagecopy($canvas, $source, 0, 0, 0, 0, $width, $height);
+
+        $tmpPath = storage_path('app/tmp_pdf_' . Str::random(24) . '.jpg');
+        @imagejpeg($canvas, $tmpPath, 88);
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        if (!File::exists($tmpPath)) {
+            return null;
+        }
+
+        return [
+            'path' => $tmpPath,
+            'cleanup' => true,
+        ];
+    }
+
+    private function buildRichPdfDocument(array $pages, ?string $templateImagePath = null): string
+    {
+        $a4Width = 595;
+        $a4Height = 842;
+
+        $objects = [];
+        $addObject = function (string $content) use (&$objects): int {
+            $objects[] = $content;
+            return count($objects);
+        };
+
+        $catalogId = $addObject('');
+        $pagesId = $addObject('');
+        $fontId = $addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+        $imageObjectIds = [];
+        $imageSizes = [];
+
+        $registerImage = function (?string $path) use (&$imageObjectIds, &$imageSizes, $addObject): ?int {
+            if (!$path || !File::exists($path)) {
+                return null;
+            }
+            if (isset($imageObjectIds[$path])) {
+                return $imageObjectIds[$path];
+            }
+
+            $size = @getimagesize($path);
+            if (!$size || empty($size[0]) || empty($size[1])) {
+                return null;
+            }
+            $raw = @file_get_contents($path);
+            if ($raw === false) {
+                return null;
+            }
+
+            $imgObj = sprintf(
+                '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>' . "\nstream\n",
+                (int) $size[0],
+                (int) $size[1],
+                strlen($raw)
+            ) . $raw . "\nendstream";
+
+            $imgId = $addObject($imgObj);
+            $imageObjectIds[$path] = $imgId;
+            $imageSizes[$path] = [(float) $size[0], (float) $size[1]];
+
+            return $imgId;
+        };
+
+        $templateObjId = $registerImage($templateImagePath);
+        $pageIds = [];
+
+        foreach ($pages as $page) {
+            $xObjectMap = [];
+            if ($templateObjId) {
+                $xObjectMap['ImTpl'] = $templateObjId;
+            }
+
+            $attachmentPath = (string) ($page['image'] ?? '');
+            $attachmentObjId = $registerImage($attachmentPath !== '' ? $attachmentPath : null);
+            if ($attachmentObjId) {
+                $xObjectMap['ImFile'] = $attachmentObjId;
+            }
+
+            $stream = '';
+
+            if (isset($xObjectMap['ImTpl'])) {
+                $stream .= "q {$a4Width} 0 0 {$a4Height} 0 0 cm /ImTpl Do Q\n";
+            }
+
+            $title = $this->escapePdfText((string) ($page['title'] ?? 'CERTIFICADO'));
+            $stream .= "BT /F1 15 Tf 42 790 Td ({$title}) Tj ET\n";
+
+            $currentY = 760;
+            foreach ((array) ($page['lines'] ?? []) as $line) {
+                $text = $this->escapePdfText((string) $line);
+                $stream .= "BT /F1 11 Tf 42 {$currentY} Td ({$text}) Tj ET\n";
+                $currentY -= 18;
+                if ($currentY < 110) {
+                    break;
+                }
+            }
+
+            if (isset($xObjectMap['ImFile']) && isset($imageSizes[$attachmentPath])) {
+                [$imgW, $imgH] = $imageSizes[$attachmentPath];
+                $maxW = 500.0;
+                $maxH = 470.0;
+                $scale = min($maxW / max($imgW, 1.0), $maxH / max($imgH, 1.0), 1.0);
+                $drawW = $imgW * $scale;
+                $drawH = $imgH * $scale;
+                $x = ($a4Width - $drawW) / 2;
+                $y = 90;
+                $stream .= sprintf("q %.3f 0 0 %.3f %.3f %.3f cm /ImFile Do Q\n", $drawW, $drawH, $x, $y);
+            }
+
+            $contentId = $addObject('<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "endstream");
+
+            $xObjResource = '';
+            if (!empty($xObjectMap)) {
+                $parts = [];
+                foreach ($xObjectMap as $name => $objId) {
+                    $parts[] = '/' . $name . ' ' . $objId . ' 0 R';
+                }
+                $xObjResource = '/XObject << ' . implode(' ', $parts) . ' >>';
+            }
+
+            $pageId = $addObject(
+                "<< /Type /Page /Parent {$pagesId} 0 R /MediaBox [0 0 {$a4Width} {$a4Height}] /Resources << /Font << /F1 {$fontId} 0 R >> {$xObjResource} >> /Contents {$contentId} 0 R >>"
+            );
+            $pageIds[] = $pageId;
+        }
+
+        $kids = implode(' ', array_map(fn (int $id) => $id . ' 0 R', $pageIds));
+        $objects[$pagesId - 1] = '<< /Type /Pages /Kids [' . $kids . '] /Count ' . count($pageIds) . ' >>';
+        $objects[$catalogId - 1] = '<< /Type /Catalog /Pages ' . $pagesId . ' 0 R >>';
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $i => $obj) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($i + 1) . " 0 obj\n" . $obj . "\nendobj\n";
+        }
+
+        $xrefPos = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= count($objects); $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root {$catalogId} 0 R >>\n";
+        $pdf .= "startxref\n{$xrefPos}\n%%EOF";
+
+        return $pdf;
+    }
+
+    private function escapePdfText(string $text): string
+    {
+        return str_replace(
+            ['\\', '(', ')', "\r", "\n"],
+            ['\\\\', '\\(', '\\)', ' ', ' '],
+            trim($text)
+        );
+    }
+
+    private function buildSimplePdf(string $text): string
+    {
+        $text = strtoupper(trim($text));
+        $stream = "BT /F1 28 Tf 160 430 Td (" . str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text) . ") Tj ET";
+        $objects = [];
+        $objects[] = "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj";
+        $objects[] = "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj";
+        $objects[] = "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj";
+        $objects[] = "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj";
+        $objects[] = "5 0 obj << /Length " . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj";
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object . "\n";
+        }
+
+        $xrefPosition = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= count($objects); $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefPosition . "\n%%EOF";
+        return $pdf;
     }
 
     private function loadInspectionFiles(?int $inspeccionId): void
@@ -1759,12 +2699,13 @@ class Formulario extends Component
     private function quickSummaryDefaults(): array
     {
         return [
-            'estado' => 'pendiente',
-            'descripcion' => 'Primero debe registrar o seleccionar un equipo/vehiculo.',
+            'estado' => 'borrador',
+            'descripcion' => 'No se ha seleccionado ningun equipo/vehiculo. Selecciona un vehiculo para continuar.',
             'inspeccion_numero' => null,
-            'show_start' => false,
+            'show_create' => false,
+            'show_continue' => false,
+            'show_view' => false,
             'show_start_observed' => false,
-            'show_edit' => false,
             'started' => false,
             'inspection_finalized' => false,
         ];
@@ -1783,6 +2724,7 @@ class Formulario extends Component
             $this->inspectionFiles = [];
             $this->inspectionFilePreviewModal = false;
             $this->inspectionFilePreview = [];
+            $this->refreshCertificateState();
             $this->dispatch('inspection-state', started: false, inspectionFinalized: false);
             return;
         }
@@ -1799,60 +2741,94 @@ class Formulario extends Component
         if (!$latest) {
             $this->quickSummary = [
                 'estado' => 'borrador',
-                'descripcion' => 'Equipo sin inspecciones registradas. Puedes iniciar una nueva inspeccion.',
+                'descripcion' => 'Equipo sin inspecciones registradas. Puedes crear una nueva inspeccion.',
                 'inspeccion_numero' => null,
-                'show_start' => true,
+                'show_create' => true,
+                'show_continue' => false,
+                'show_view' => false,
                 'show_start_observed' => false,
-                'show_edit' => false,
                 'started' => false,
                 'inspection_finalized' => false,
             ];
         } else {
             $lastCert = $latest->certificados->first();
             $lastDetailNumber = $latest->ultimoDetalle?->inespeccion_numero;
-            $estado = (string) $latest->estado_inspeccion;
+            $estado = (string) ($latest->ultimoDetalle?->inspeccion_estado ?: $latest->estado_inspeccion);
             $descripcion = 'Inspeccion en estado ' . $estado . '.';
-            $showStart = false;
+            $showCreate = false;
+            $showContinue = false;
+            $showView = true;
             $showStartObserved = false;
-            $showEdit = false;
-            $started = false;
-            $inspectionFinalized = false;
+            $started = true;
+            $inspectionFinalized = in_array($estado, ['observado', 'aprobado', 'rechazado', 'anulado'], true);
 
             if ($estado === 'en_inspeccion') {
-                $started = true;
-                $showEdit = true;
+                $showContinue = true;
+                $showView = false;
+                $inspectionFinalized = false;
                 $when = $latest->fecha_ingreso ? $latest->fecha_ingreso->format('d/m/Y') : $latest->created_at?->format('d/m/Y H:i');
                 $descripcion = 'El equipo se encuentra en inspeccion desde ' . ($when ?: 'fecha no registrada') . '.';
-            } elseif (in_array($estado, ['observado', 'subsanacion'], true)) {
-                $started = true;
-                $showStartObserved = true;
-                $showEdit = true;
-                $limit = $latest->ultimoDetalle?->correcion_vigencia_fecha ? Carbon::parse($latest->ultimoDetalle->correcion_vigencia_fecha)->format('d/m/Y') : 'sin fecha limite';
-                $descripcion = 'El equipo se encuentra observado. Fecha limite para subsanar: ' . $limit . '.';
-            } elseif ($lastCert && $lastCert->fecha_vencimiento) {
-                $expireDate = Carbon::parse($lastCert->fecha_vencimiento);
-                if ($expireDate->isPast()) {
-                    $showStart = true;
-                    $descripcion = 'El certificado vencio el ' . $expireDate->format('d/m/Y') . '. Puedes iniciar una nueva inspeccion.';
-                    $estado = 'certificado vencido';
+            } elseif ($estado === 'subsanacion') {
+                $showContinue = true;
+                $showView = false;
+                $inspectionFinalized = false;
+                $when = $latest->ultimoDetalle?->inspeccion_fecha ? Carbon::parse($latest->ultimoDetalle->inspeccion_fecha)->format('d/m/Y H:i') : null;
+                $descripcion = 'Se encuentra en subsanacion de observaciones' . ($when ? ' desde ' . $when : '') . '.';
+            } elseif ($estado === 'observado') {
+                $limitDate = $latest->ultimoDetalle?->correcion_vigencia_fecha
+                    ? Carbon::parse($latest->ultimoDetalle->correcion_vigencia_fecha)->endOfDay()
+                    : null;
+                $limitExpired = $limitDate ? $limitDate->isPast() : true;
+
+                if ($limitExpired) {
+                    $estado = 'rechazado';
+                    $inspectionFinalized = true;
+                    $showCreate = true;
+                    $descripcion = 'La inspeccion observada vencio su plazo de subsanacion. Debes crear una nueva inspeccion.';
+
+                    if ((string) $latest->estado_inspeccion === 'observado') {
+                        $latest->update([
+                            'estado_inspeccion' => 'rechazado',
+                            'updated_by' => $this->actorId(),
+                        ]);
+                        if ($latest->ultimoDetalle && (string) $latest->ultimoDetalle->inspeccion_estado === 'observado') {
+                            $latest->ultimoDetalle->update([
+                                'inspeccion_estado' => 'rechazado',
+                                'updated_by' => $this->actorId(),
+                            ]);
+                        }
+                    }
                 } else {
-                    $started = true;
-                    $showEdit = true;
-                    $descripcion = 'El certificado de inspeccion se encuentra vigente hasta ' . $expireDate->format('d/m/Y') . '.';
-                    $estado = 'certificado vigente';
+                    $showStartObserved = true;
+                    $limitLabel = $limitDate?->format('d/m/Y') ?? 'sin fecha limite';
+                    $descripcion = 'El equipo se encuentra observado. Fecha limite para subsanar: ' . $limitLabel . '.';
                 }
+            } elseif ($estado === 'aprobado') {
+                $expireDate = $lastCert?->fecha_vencimiento ? Carbon::parse($lastCert->fecha_vencimiento)->endOfDay() : null;
+                if ($expireDate && $expireDate->isPast()) {
+                    $showCreate = true;
+                    $descripcion = 'El certificado vencio el ' . $expireDate->format('d/m/Y') . '. Puedes crear una nueva inspeccion.';
+                } elseif ($expireDate) {
+                    $descripcion = 'El certificado de inspeccion se encuentra vigente hasta ' . $expireDate->format('d/m/Y') . '.';
+                } else {
+                    $showCreate = false;
+                    $descripcion = 'La inspeccion fue finalizada sin observaciones, pero aun no se ha generado el certificado.';
+                }
+            } elseif ($estado === 'rechazado') {
+                $showCreate = true;
+                $descripcion = 'La inspeccion fue rechazada por vencimiento de subsanacion. Debes crear una nueva inspeccion.';
             } else {
-                $showStart = true;
-                $descripcion = 'El equipo tiene inspeccion sin certificado vigente. Puedes iniciar una nueva inspeccion.';
+                $descripcion = 'Puedes visualizar la ultima inspeccion registrada.';
             }
 
             $this->quickSummary = [
                 'estado' => $estado,
                 'descripcion' => $descripcion,
                 'inspeccion_numero' => $lastDetailNumber,
-                'show_start' => $showStart,
+                'show_create' => $showCreate,
+                'show_continue' => $showContinue,
+                'show_view' => $showView,
                 'show_start_observed' => $showStartObserved,
-                'show_edit' => $showEdit,
                 'started' => $started,
                 'inspection_finalized' => $inspectionFinalized,
             ];
@@ -1882,12 +2858,13 @@ class Formulario extends Component
         $latestDetalleId = $latest?->ultimoDetalle?->id;
         $this->currentInspeccionId = $latest ? (int) $latest->id : null;
         $this->currentDetalleInspeccionId = $latestDetalleId ? (int) $latestDetalleId : null;
-        if ($latestDetalleId && (bool) ($this->quickSummary['started'] ?? false)) {
+        if ($latestDetalleId) {
             $this->loadQuestionnaireForDetalle((int) $latestDetalleId);
         } else {
             $this->loadQuestionnaireForDetalle(null);
         }
         $this->loadInspectionFiles($this->currentInspeccionId);
+        $this->refreshCertificateState();
 
         $this->dispatch(
             'inspection-state',
@@ -1896,3 +2873,10 @@ class Formulario extends Component
         );
     }
 }
+
+
+
+
+
+
+

@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Inspeccion;
+use App\Models\DetalleInspeccion;
+use App\Services\InspeccionService;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\File;
 use App\Http\Controllers\DashboardsController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\CursoController;
@@ -81,6 +84,34 @@ Route::prefix('inspecciones')->name('inspecciones.')->group(function () {
     Route::get('/catalogos', function () {
         return view('livewire.inspecciones.catalogos');
     })->name('catalogos');
+
+    Route::get('/{inspeccion}/certificado/pdf', function (Inspeccion $inspeccion, InspeccionService $service) {
+        $relative = $service->getGeneratedCertificatePath($inspeccion);
+        abort_unless($relative, 404, 'No hay certificado generado para esta inspeccion.');
+
+        $absolute = public_path($relative);
+        abort_unless(File::exists($absolute), 404, 'El archivo de certificado no existe en almacenamiento.');
+
+        return response()->file($absolute, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="certificado-' . ((string) ($inspeccion->codigo_formateado ?: $inspeccion->id)) . '.pdf"',
+        ]);
+    })->name('pdf.certificado');
+
+    Route::get('/{inspeccion}/detalles/{detalle}/informe/pdf', function (Inspeccion $inspeccion, DetalleInspeccion $detalle, InspeccionService $service) {
+        abort_unless((int) $detalle->inspeccion_id === (int) $inspeccion->id, 404, 'El detalle no pertenece a la inspeccion.');
+
+        $relative = $service->getGeneratedDetailReportPath($inspeccion, $detalle);
+        abort_unless($relative, 404, 'No hay informe generado para este detalle.');
+
+        $absolute = public_path($relative);
+        abort_unless(File::exists($absolute), 404, 'El archivo de informe no existe en almacenamiento.');
+
+        return response()->file($absolute, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="informe-' . ((string) ($inspeccion->codigo_formateado ?: $inspeccion->id)) . '-detalle-' . ((int) $detalle->id) . '.pdf"',
+        ]);
+    })->name('pdf.informe');
 
     Route::get('/{inspeccion}', function (Inspeccion $inspeccion) {
         return view('livewire.inspecciones.form', [

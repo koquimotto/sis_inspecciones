@@ -248,7 +248,6 @@ INSERT INTO `cuestionario_preguntas` (`id`, `cuestionario_categoria_id`, `cuesti
 	(9, 1, 1, '.2.', NULL, NULL, NULL, 9, 'ingreso_salida', 'Nivel de combustible en el tanque', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 1, 'radio', '1=>ADD,2=>1/4,3=>1/2,4=>3/4,5=>FULL', 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(10, 1, 1, '.2.', NULL, NULL, NULL, 10, 'valor_unico', 'Fecha de ultimo mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(11, 1, 1, '.2.', NULL, NULL, NULL, 11, 'valor_unico', 'Tipo de mantenimiento preventivo', 1, 'radio', NULL, 0, 'radio', NULL, 0, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
-	(15, 1, 1, '.2.', NULL, NULL, NULL, 15, 'valor_unico', 'SOAT / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(16, 1, 1, '.2.', NULL, NULL, NULL, 16, 'valor_unico', 'Seguro contra todo riesgo / Fecha de vencimiento / Copia / Nombre de la aseguradora', 1, 'radio', NULL, 0, 'radio', NULL, 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(17, 2, 2, '.2.', NULL, NULL, NULL, 1, 'ingreso_salida', 'ROPS (Roller Over Protection System) Sistema protector contra volcaduras', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(18, 2, 2, '.2.', NULL, NULL, NULL, 2, 'ingreso_salida', 'Faros neblineros (02) (opcional)', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, 'radio', '1=>OK,2=>NO,3=>N/A', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
@@ -384,6 +383,8 @@ INSERT INTO `cuestionario_preguntas` (`id`, `cuestionario_categoria_id`, `cuesti
 	(148, 4, 11, '.2.', NULL, NULL, NULL, 6, 'ingreso_salida', 'Tabla de cargas de pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 15:39:01', NULL, NULL, NULL, NULL),
 	(149, 4, 11, '.2.', NULL, NULL, NULL, 7, 'ingreso_salida', 'Certificado de operatividad de la pluma', 1, 'radio', '1=>SI,2=>NO', 1, 'radio', '1=>SI,2=>NO', 1, b'1', '2026-03-31 15:39:01', '2026-03-31 21:28:06', NULL, NULL, NULL, NULL);
 
+
+
 -- Volcando estructura para tabla inspecciones.cuestionario_respuestas
 CREATE TABLE IF NOT EXISTS `cuestionario_respuestas` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -465,7 +466,7 @@ CREATE TABLE IF NOT EXISTS `detalle_inspeccion` (
   `inspeccion_estado` enum('borrador','en_inspeccion','observado','subsanacion','aprobado','rechazado','anulado') DEFAULT 'borrador',
   `inspeccion_fecha` datetime DEFAULT NULL,
   `correcion_vigencia_fecha` date DEFAULT NULL,
-  `severidad` enum('baja','media','alta','critica') DEFAULT 'media',
+  `severidad` enum('baja','media','alta','critica') DEFAULT NULL,
   `inspeccion_observaciones` text DEFAULT NULL,
   `estado` bit(1) DEFAULT b'1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -678,7 +679,7 @@ CREATE TABLE IF NOT EXISTS `inspeccion_archivos_equipo` (
   `archivo_autogenerado` bit(1) DEFAULT b'0',
   `archivo_tipo` enum('imagen','pdf') NOT NULL,
   `archivo_ruta` varchar(255) NOT NULL,
-  `archivo_origen` enum('original','observacion') NOT NULL,
+  `archivo_origen` enum('original','observacion','autogenerado') NOT NULL,
   `mostrar_certificado` bit(1) DEFAULT NULL,
   `estado` bit(1) DEFAULT b'1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1468,6 +1469,22 @@ INSERT INTO `users` (`id`, `persona_id`, `empresa_id`, `user_id`, `name`, `email
 	(3, 3, NULL, NULL, 'Carlos Vargas Rojas', 'service@sis-cursos.test', NULL, '74581236', '$2y$12$Eat/IjEisxmeRH7tZudewuB4x9Ksf.M4n2fq1V0mC315DxQRtcBsm', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:31', '2026-03-05 09:55:31'),
 	(4, 4, NULL, NULL, 'Renato Salazar Paredes', 'docente@sis-cursos.test', NULL, '48921763', '$2y$12$ylhpr8VbdeV8A8787k8YzuXqfdmgk.6XBkEfbZKpeBP.htmNaI.sG', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:33', '2026-03-05 09:55:33'),
 	(5, 5, NULL, NULL, 'Bruno Huaman Torres', 'alumno@sis-cursos.test', NULL, '53609418', '$2y$12$0zGhYMxS8byhvLNkLRY8g.CqJYJObalEJ.GEj0qHLDw5sfFm3EUWe', NULL, NULL, NULL, 1, NULL, NULL, '2026-03-05 09:55:35', '2026-03-05 09:55:35');
+
+
+
+ALTER TABLE `inspecciones`.`cuestionario_preguntas` ADD COLUMN `ingreso_respuesta_defecto` varchar(255) NULL AFTER `ingreso_respuesta_valores`;
+
+ALTER TABLE `inspecciones`.`cuestionario_preguntas` ADD COLUMN `salida_respuesta_defecto` varchar(255) NULL AFTER `salida_respuesta_valores`;
+
+ALTER TABLE `inspecciones`.`cuestionario_preguntas` MODIFY COLUMN `ingreso_respuesta_tipo` enum('select','radio','entero','decimal','texto','fecha','fecha_hora','') CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci NULL DEFAULT NULL AFTER `ingeso_preguntar`;
+
+ALTER TABLE `inspecciones`.`cuestionario_preguntas` MODIFY COLUMN `salida_respuesta_tipo` enum('select','radio','entero','decimal','texto','fecha','fecha_hora','') CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci NULL DEFAULT NULL AFTER `salida_preguntar`;
+
+ALTER TABLE `inspecciones`.`cuestionario_respuestas` ADD COLUMN `ingreso_respuesta_tipo` enum('select','radio','entero','decimal','texto','fecha','fecha_hora','') NULL AFTER `cuestionario_pregunta_personalizada`;
+
+ALTER TABLE `inspecciones`.`cuestionario_respuestas` ADD COLUMN `salida_respuesta_tipo` enum('select','radio','entero','decimal','texto','fecha','fecha_hora','') NULL AFTER `ingreso_respuesta`;
+
+ALTER TABLE `inspecciones`.`detalle_inspeccion` ADD COLUMN `pdf_ruta` text NULL AFTER `inspeccion_observaciones`;
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

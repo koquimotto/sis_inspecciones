@@ -64,7 +64,8 @@ class CuestionarioRespuesta extends Model
 
     public function observacionesAdjuntas(): HasMany
     {
-        return $this->hasMany(CuestionarioRespuestaObservacion::class, 'cuestionario_respuesta_id');
+        return $this->hasMany(CuestionarioRespuestaObservacion::class, 'cuestionario_respuesta_id')
+            ->where('estado', 1);
     }
 
     public function creadoPor(): BelongsTo

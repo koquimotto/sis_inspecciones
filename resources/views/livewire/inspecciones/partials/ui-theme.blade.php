@@ -170,6 +170,145 @@
         background: linear-gradient(90deg, transparent 0%, #d9e2f0 15%, #d9e2f0 85%, transparent 100%);
     }
 
+    .insp-ui .insp-tab-strip {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: #fff;
+    }
+
+    .insp-ui .insp-tab {
+        border: 0;
+        border-right: 1px solid #d1d5db;
+        background: #fff;
+        color: #4b5563;
+        min-height: 38px;
+        padding: .6rem .9rem;
+        font-size: .76rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: left;
+    }
+
+    .insp-ui .insp-tab:last-child {
+        border-right: 0;
+    }
+
+    .insp-ui .insp-tab span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .insp-ui .insp-tab.is-active {
+        background: #7c3aed;
+        color: #fff;
+    }
+
+    .insp-ui .insp-subtab-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    .insp-ui .insp-subtab-scroll {
+        display: flex;
+        gap: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border: 1px solid #c4b5fd;
+        border-radius: 8px;
+        background: #ede9fe;
+        box-sizing: border-box;
+    }
+
+    .insp-ui .insp-subtab {
+        border: 0;
+        border-right: 1px solid #c4b5fd;
+        background: transparent;
+        color: #4c1d95;
+        min-height: 36px;
+        padding: .55rem .85rem;
+        font-size: .74rem;
+        line-height: 1.2;
+        text-align: left;
+        white-space: nowrap;
+        flex: 0 0 auto;
+        min-width: 120px;
+        max-width: 180px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .4rem;
+    }
+
+    .insp-ui .insp-subtab:last-child {
+        border-right: 0;
+    }
+
+    .insp-ui .insp-subtab span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .insp-ui .insp-subtab.is-active {
+        background: #8b5cf6;
+        color: #fff;
+    }
+
+    .insp-ui .insp-subtab-alert {
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #f59e0b;
+        color: #fff;
+        font-size: .75rem;
+        font-weight: 800;
+        line-height: 18px;
+        text-align: center;
+        flex: 0 0 18px;
+    }
+
+    .insp-ui .insp-row-has-observation {
+        background: linear-gradient(90deg, rgba(220, 38, 38, 0.06) 0%, rgba(220, 38, 38, 0) 38%);
+    }
+
+    .insp-ui .insp-subtab-add {
+        border: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: #7c3aed;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 32px;
+    }
+
+    .insp-ui .insp-subtab-add:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+    }
+
     .insp-ui .table thead th {
         color: #374151;
         font-size: .78rem;
