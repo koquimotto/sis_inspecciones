@@ -33,7 +33,7 @@ class InspeccionService
         $relative = $this->storePdfFromPages(
             $inspeccion,
             (string) $detalle->inespeccion_numero,
-            'reporte_detallado',
+            'resumen-inspeccion',
             [[
                 'title' => 'REPORTE DETALLADO',
                 'lines' => $lines,
@@ -171,7 +171,7 @@ class InspeccionService
 
     private function storePdfFromPages(Inspeccion $inspeccion, string $numeroInspeccion, string $prefix, array $pages, ?string $templatePath = null): ?string
     {
-        $folderInfo = $this->resolveTargetFolder($inspeccion, $numeroInspeccion);
+        $folderInfo = $this->resolveTargetFolder($inspeccion, $numeroInspeccion, 'archivos_generados');
         if (!$folderInfo) {
             return null;
         }
@@ -179,7 +179,7 @@ class InspeccionService
         $templateImage = $this->prepareJpegForPdf((string) $templatePath);
         $pdfBinary = $this->buildRichPdfDocument($pages, $templateImage['path'] ?? null);
 
-        $fileName = now()->format('YmdHis') . '_' . $prefix . '.pdf';
+        $fileName = $this->buildGeneratedPdfFileName($prefix, $numeroInspeccion);
         $absoluteFile = $folderInfo['abs'] . DIRECTORY_SEPARATOR . $fileName;
         File::put($absoluteFile, $pdfBinary);
 
@@ -196,24 +196,70 @@ class InspeccionService
         return $folderInfo['rel'] . '/' . $fileName;
     }
 
-    private function resolveTargetFolder(Inspeccion $inspeccion, string $numeroInspeccion): ?array
+    private function resolveTargetFolder(Inspeccion $inspeccion, string $codigoInspeccion, string $bucket): ?array
     {
         $empresaEquipo = $inspeccion->empresaEquipo;
-        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
-        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $inspeccion->empresa_equipo_id)));
+        $serieTipo = trim((string) ($empresaEquipo?->serie_tipo ?: 'SERIE'));
+        $serieCodigo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $inspeccion->empresa_equipo_id)));
+        $codigoInspeccion = trim($codigoInspeccion);
+        $bucket = trim($bucket);
 
-        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
-        if ($folder === '') {
-            $folder = 'INSPECCION';
-        }
+        $serieFolder = $this->sanitizePathSegment($serieTipo . '_' . $serieCodigo, 'serie');
+        $codigoFolder = $this->sanitizePathSegment($codigoInspeccion, 'inspeccion');
+        $bucketFolder = $this->sanitizePathSegment($bucket, 'archivos_generados');
 
-        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . trim($numeroInspeccion);
+        $targetRelativePath = 'uploads/' . $serieFolder . '/' . $codigoFolder . '/' . $bucketFolder;
         $targetDirectory = public_path($targetRelativePath);
         if (!File::exists($targetDirectory)) {
             File::makeDirectory($targetDirectory, 0755, true);
         }
 
         return ['rel' => $targetRelativePath, 'abs' => $targetDirectory];
+    }
+
+    private function buildGeneratedPdfFileName(string $prefix, string $codigoInspeccion): string
+    {
+        $timestamp = now()->format('Ymd_His');
+        $codigo = $this->sanitizeFileToken($codigoInspeccion, 'inspeccion');
+        $normalizedPrefix = Str::of(trim($prefix))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\-]+/u', '-')
+            ->trim('-')
+            ->value();
+
+        if ($normalizedPrefix === 'certificado') {
+            return "certificado-{$timestamp}-{$codigo}.pdf";
+        }
+
+        if ($normalizedPrefix === 'resumen-inspeccion' || $normalizedPrefix === 'reporte-detallado') {
+            return "resumen-inspeccion-{$timestamp}-{$codigo}.pdf";
+        }
+
+        $fallbackPrefix = $normalizedPrefix !== '' ? $normalizedPrefix : 'documento';
+        return "{$fallbackPrefix}-{$timestamp}-{$codigo}.pdf";
+    }
+
+    private function sanitizePathSegment(string $value, string $fallback): string
+    {
+        $segment = Str::of(trim($value))
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\-_]+/u', '_')
+            ->trim('_')
+            ->value();
+
+        return $segment !== '' ? $segment : $fallback;
+    }
+
+    private function sanitizeFileToken(string $value, string $fallback): string
+    {
+        $token = Str::of(trim($value))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\-_]+/u', '-')
+            ->trim('-_')
+            ->value();
+
+        return $token !== '' ? $token : $fallback;
     }
 
     private function prepareJpegForPdf(?string $absolutePath): ?array
