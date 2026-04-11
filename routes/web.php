@@ -3,8 +3,10 @@
 use App\Models\Inspeccion;
 use App\Models\DetalleInspeccion;
 use App\Services\InspeccionService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\File;
+use Illuminate\Http\Request;
 use App\Http\Controllers\DashboardsController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\CursoController;
@@ -112,6 +114,114 @@ Route::prefix('inspecciones')->name('inspecciones.')->group(function () {
             'Content-Disposition' => 'inline; filename="informe-' . ((string) ($inspeccion->codigo_formateado ?: $inspeccion->id)) . '-detalle-' . ((int) $detalle->id) . '.pdf"',
         ]);
     })->name('pdf.informe');
+
+    Route::get('/pruebas/pdf/certificado', function (Request $request) {
+        $inspeccion = (object) [
+            'id' => 999,
+            'codigo_formateado' => '26-0001-XXX-069',
+            'servicio' => (object) ['descripcion' => 'INSPECCION GENERAL'],
+        ];
+
+        $detalle = (object) [
+            'id' => 1,
+            'inspeccion_estado' => 'aprobado',
+        ];
+
+        $empresa = (object) [
+            'razon_social' => 'EMPRESA DEMO S.A.C.',
+            'ruc' => '20123456789',
+        ];
+
+        $equipo = (object) [
+            'descripcion' => 'Equipo de elevacion DEMO',
+        ];
+
+        $empresaEquipo = (object) [
+            'descripcion' => 'Unidad DEMO',
+            'serie_codigo' => 'ABC-123',
+        ];
+
+        $uploadsRoot = public_path('uploads');
+        $demoImages = collect(File::exists($uploadsRoot) ? File::allFiles($uploadsRoot) : [])
+            ->filter(fn ($file) => in_array(strtolower((string) $file->getExtension()), ['jpg', 'jpeg', 'png', 'webp'], true))
+            ->take(24)
+            ->map(function ($file, $idx) {
+                $raw = @file_get_contents($file->getPathname());
+                if ($raw === false) {
+                    return null;
+                }
+
+                $mime = File::mimeType($file->getPathname()) ?: 'image/jpeg';
+                return [
+                    'title' => 'EVIDENCIA ' . ((int) $idx + 1),
+                    'src' => 'data:' . $mime . ';base64,' . base64_encode($raw),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        $showObservationDemo = $request->boolean('mostrar_observaciones', true);
+        $observationDemoItems = $showObservationDemo ? [
+            ['descripcion' => 'No cuenta con jabon liquido', 'estado' => 'Observacion levantada (subsanada)'],
+            ['descripcion' => 'Cambio de posicion del extintor', 'estado' => 'Observacion levantada (subsanada)'],
+            ['descripcion' => 'Placa posterior suelta', 'estado' => 'Observacion levantada (subsanada)'],
+        ] : [];
+
+        $pdf = Pdf::loadView('pdf.certificado-inspeccion', [
+            'inspeccion' => $inspeccion,
+            'detalle' => $detalle,
+            'empresa' => $empresa,
+            'equipo' => $equipo,
+            'empresaEquipo' => $empresaEquipo,
+            'observedParametersCount' => 0,
+            'selectedFilesCount' => 2,
+            'imagePages' => $demoImages,
+            //'imagePages' => array_chunk($demoImages, 24),
+            'pdfPages' => [],
+            'nonImageAttachments' => [],
+            'hasPenultimateObservationSection' => $showObservationDemo,
+            'penultimateObservationItems' => $observationDemoItems,
+        ])->setPaper('a4');
+
+        return $pdf->stream('preview-certificado.pdf');
+    })->name('pdf.pruebas.certificado');
+
+    Route::get('/pruebas/pdf/resumen-inspeccion', function () {
+        $inspeccion = (object) [
+            'id' => 999,
+            'codigo_formateado' => '26-0001-XXX-069',
+            'empresaEquipo' => (object) [
+                'descripcion' => 'Unidad DEMO',
+                'serie_codigo' => 'ABC-123',
+            ],
+        ];
+
+        $detalle = (object) [
+            'id' => 1,
+            'inespeccion_numero' => 1,
+            'inspeccion_fecha' => now(),
+            'inspeccion_estado' => 'en_inspeccion',
+            'inspeccion_observaciones' => 'Observaciones de prueba para revisar estilos del PDF.',
+        ];
+
+        $empresa = (object) [
+            'razon_social' => 'EMPRESA DEMO S.A.C.',
+        ];
+
+        $equipo = (object) [
+            'descripcion' => 'Equipo de elevacion DEMO',
+        ];
+
+        $pdf = Pdf::loadView('pdf.informe-detallado-inspeccion', [
+            'inspeccion' => $inspeccion,
+            'detalle' => $detalle,
+            'empresa' => $empresa,
+            'equipo' => $equipo,
+        ])->setPaper('a4');
+
+        return $pdf->stream('preview-resumen-inspeccion.pdf');
+    })->name('pdf.pruebas.resumen');
 
     Route::get('/{inspeccion}', function (Inspeccion $inspeccion) {
         return view('livewire.inspecciones.form', [

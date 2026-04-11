@@ -1464,21 +1464,32 @@ class Formulario extends Component
                 return;
             }
             $tipoCertificadoId = $this->resolveTipoCertificadoId();
+            $numero = $this->nextCertificateNumber();
+            $fechaEmision = now()->toDateString();
+            $fechaVencimiento = now()->addYear()->toDateString();
 
             $pdfRelative = app(InspeccionService::class)
-                ->generateInspectionCertificatePdf($inspeccion, $detalle, (int) $this->observedParametersCount);
+                ->generateInspectionCertificatePdf(
+                    $inspeccion,
+                    $detalle,
+                    (int) $this->observedParametersCount,
+                    [
+                        'numero' => $numero,
+                        'fecha_emision' => $fechaEmision,
+                        'fecha_vencimiento' => $fechaVencimiento,
+                    ]
+                );
             if (!$pdfRelative) {
                 throw new \RuntimeException('No se pudo generar el certificado.');
             }
-            $numero = $this->nextCertificateNumber();
 
             Certificado::query()->create([
                 'tipo_certificado_id' => $tipoCertificadoId,
                 'inspeccion_id' => (int) $inspeccion->id,
                 'detalle_inspeccion_id' => (int) $detalle->id,
                 'numero' => $numero,
-                'fecha_emision' => now()->toDateString(),
-                'fecha_vencimiento' => now()->addYear()->toDateString(),
+                'fecha_emision' => $fechaEmision,
+                'fecha_vencimiento' => $fechaVencimiento,
                 'pdf_ruta' => $pdfRelative,
                 'anulado' => 0,
                 'estado' => 1,
@@ -1504,7 +1515,7 @@ class Formulario extends Component
                 'archivo_tipo' => 'pdf',
                 'archivo_ruta' => $pdfRelative,
                 'archivo_origen' => 'autogenerado',
-                'mostrar_certificado' => 1,
+                'mostrar_certificado' => 0,
                 'estado' => 1,
                 'created_by' => $this->actorId(),
                 'updated_by' => $this->actorId(),
@@ -2412,6 +2423,7 @@ class Formulario extends Component
         $selectedFiles = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', (int) $inspeccion->id)
             ->where('estado', 1)
+            ->where('archivo_origen', 'original')
             ->where('mostrar_certificado', 1)
             ->orderBy('id')
             ->get();
