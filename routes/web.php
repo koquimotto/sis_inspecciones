@@ -183,3 +183,26 @@ Route::prefix('servicios')->name('servicios.')->group(function () {
     })->name('index');
 
 });
+
+
+
+// Gestión de interfaces
+Route::prefix('pages')->name('pages.')->group(function () {
+
+    Route::prefix('/inspections')->name('pages.inspections.')->group(function () {
+
+        Route::get('/', function () {
+            return view('livewire.pages.inspections.index');
+        })->name('index');
+    
+    });
+    
+    Route::prefix('/items')->name('pages.items.')->group(function () {
+
+        Route::get('/', function () {
+            return view('livewire.pages.items.index');
+        })->name('index');
+    
+    });
+
+});
