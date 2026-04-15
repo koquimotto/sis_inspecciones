@@ -1267,17 +1267,8 @@ class Formulario extends Component
             return;
         }
 
-        $empresaEquipo = $inspeccion->empresaEquipo;
-        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
-        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
         $numeroInspeccion = (string) $this->resolveInspectionNumber();
-
-        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
-        if ($folder === '') {
-            $folder = 'INSPECCION';
-        }
-
-        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetRelativePath = $this->resolveInspectionStoragePath($inspeccion, $numeroInspeccion, 'archivos_cargados');
         $targetDirectory = public_path($targetRelativePath);
         if (!File::exists($targetDirectory)) {
             File::makeDirectory($targetDirectory, 0755, true);
@@ -1287,7 +1278,8 @@ class Formulario extends Component
         $extension = strtolower((string) $uploaded->getClientOriginalExtension());
         $mimeType = strtolower((string) $uploaded->getMimeType());
         $archivoTipo = str_contains($mimeType, 'pdf') || $extension === 'pdf' ? 'pdf' : 'imagen';
-        $fileName = now()->format('YmdHis') . '_' . Str::random(10) . '.' . $extension;
+        $baseName = $this->sanitizeStorageFileToken((string) pathinfo((string) $uploaded->getClientOriginalName(), PATHINFO_FILENAME), 'archivo');
+        $fileName = now()->format('Ymd_His') . '-' . $baseName . '-' . Str::lower(Str::random(6)) . '.' . $extension;
         $sourcePath = $uploaded->getRealPath();
         if (!$sourcePath || !is_file($sourcePath)) {
             $this->dispatch('swal', type: 'warning', title: 'Archivo no disponible', text: 'No se pudo leer el archivo temporal cargado.');
@@ -1327,6 +1319,7 @@ class Formulario extends Component
     {
         $archivo = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', $this->currentInspeccionId)
+            ->where('archivo_origen', 'original')
             ->findOrFail($archivoId);
 
         $this->inspectionFilePreview = [
@@ -1344,6 +1337,7 @@ class Formulario extends Component
     {
         $archivo = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', $this->currentInspeccionId)
+            ->where('archivo_origen', 'original')
             ->findOrFail($archivoId);
 
         $absolutePath = public_path((string) $archivo->archivo_ruta);
@@ -1370,6 +1364,7 @@ class Formulario extends Component
     {
         $archivo = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', $this->currentInspeccionId)
+            ->where('archivo_origen', 'original')
             ->find($archivoId);
 
         if (!$archivo) {
@@ -1469,21 +1464,32 @@ class Formulario extends Component
                 return;
             }
             $tipoCertificadoId = $this->resolveTipoCertificadoId();
+            $numero = $this->nextCertificateNumber();
+            $fechaEmision = now()->toDateString();
+            $fechaVencimiento = now()->addYear()->toDateString();
 
             $pdfRelative = app(InspeccionService::class)
-                ->generateInspectionCertificatePdf($inspeccion, $detalle, (int) $this->observedParametersCount);
+                ->generateInspectionCertificatePdf(
+                    $inspeccion,
+                    $detalle,
+                    (int) $this->observedParametersCount,
+                    [
+                        'numero' => $numero,
+                        'fecha_emision' => $fechaEmision,
+                        'fecha_vencimiento' => $fechaVencimiento,
+                    ]
+                );
             if (!$pdfRelative) {
                 throw new \RuntimeException('No se pudo generar el certificado.');
             }
-            $numero = $this->nextCertificateNumber();
 
             Certificado::query()->create([
                 'tipo_certificado_id' => $tipoCertificadoId,
                 'inspeccion_id' => (int) $inspeccion->id,
                 'detalle_inspeccion_id' => (int) $detalle->id,
                 'numero' => $numero,
-                'fecha_emision' => now()->toDateString(),
-                'fecha_vencimiento' => now()->addYear()->toDateString(),
+                'fecha_emision' => $fechaEmision,
+                'fecha_vencimiento' => $fechaVencimiento,
                 'pdf_ruta' => $pdfRelative,
                 'anulado' => 0,
                 'estado' => 1,
@@ -1509,7 +1515,7 @@ class Formulario extends Component
                 'archivo_tipo' => 'pdf',
                 'archivo_ruta' => $pdfRelative,
                 'archivo_origen' => 'autogenerado',
-                'mostrar_certificado' => 1,
+                'mostrar_certificado' => 0,
                 'estado' => 1,
                 'created_by' => $this->actorId(),
                 'updated_by' => $this->actorId(),
@@ -2163,6 +2169,65 @@ class Formulario extends Component
         return trim($ascii) !== '' ? trim($ascii) : 'archivo';
     }
 
+    private function sanitizeStorageFileToken(string $value, string $fallback): string
+    {
+        $token = Str::of(trim($value))
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\\-_]+/u', '-')
+            ->trim('-_')
+            ->value();
+
+        return $token !== '' ? $token : $fallback;
+    }
+
+    private function sanitizeStoragePathSegment(string $value, string $fallback): string
+    {
+        $segment = Str::of(trim($value))
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\\-_]+/u', '_')
+            ->trim('_')
+            ->value();
+
+        return $segment !== '' ? $segment : $fallback;
+    }
+
+    private function resolveInspectionStoragePath(Inspeccion $inspeccion, string $codigoInspeccion, string $bucket): string
+    {
+        $empresaEquipo = $inspeccion->empresaEquipo;
+        $serieTipo = trim((string) ($empresaEquipo?->serie_tipo ?: 'SERIE'));
+        $serieCodigo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $inspeccion->empresa_equipo_id)));
+
+        $serieFolder = $this->sanitizeStoragePathSegment($serieTipo . '_' . $serieCodigo, 'serie');
+        $codigoFolder = $this->sanitizeStoragePathSegment($codigoInspeccion, 'inspeccion');
+        $bucketFolder = $this->sanitizeStoragePathSegment($bucket, 'archivos');
+
+        return 'uploads/' . $serieFolder . '/' . $codigoFolder . '/' . $bucketFolder;
+    }
+
+    private function buildGeneratedPdfFileName(string $prefix, string $codigoInspeccion): string
+    {
+        $timestamp = now()->format('Ymd_His');
+        $codigo = $this->sanitizeStorageFileToken($codigoInspeccion, 'inspeccion');
+        $normalizedPrefix = Str::of(trim($prefix))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\\-]+/u', '-')
+            ->trim('-')
+            ->value();
+
+        if ($normalizedPrefix === 'certificado') {
+            return "certificado-{$timestamp}-{$codigo}.pdf";
+        }
+
+        if ($normalizedPrefix === 'resumen-inspeccion' || $normalizedPrefix === 'reporte-detallado') {
+            return "resumen-inspeccion-{$timestamp}-{$codigo}.pdf";
+        }
+
+        $fallbackPrefix = $normalizedPrefix !== '' ? $normalizedPrefix : 'documento';
+        return "{$fallbackPrefix}-{$timestamp}-{$codigo}.pdf";
+    }
+
     private function actorId(): ?int
     {
         $user = Auth::user();
@@ -2328,23 +2393,14 @@ class Formulario extends Component
     private function generateInspectionPdf(string $titleText, string $prefix): string
     {
         $inspeccion = Inspeccion::query()->findOrFail($this->currentInspeccionId);
-        $empresaEquipo = $inspeccion->empresaEquipo;
-        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
-        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
         $numeroInspeccion = (string) $this->resolveInspectionNumber();
-
-        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
-        if ($folder === '') {
-            $folder = 'INSPECCION';
-        }
-
-        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetRelativePath = $this->resolveInspectionStoragePath($inspeccion, $numeroInspeccion, 'archivos_generados');
         $targetDirectory = public_path($targetRelativePath);
         if (!File::exists($targetDirectory)) {
             File::makeDirectory($targetDirectory, 0755, true);
         }
 
-        $fileName = now()->format('YmdHis') . '_' . $prefix . '.pdf';
+        $fileName = $this->buildGeneratedPdfFileName($prefix, $numeroInspeccion);
         $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
         File::put($absoluteFile, $this->buildSimplePdf($titleText));
 
@@ -2354,16 +2410,9 @@ class Formulario extends Component
     private function generateCertificatePdf(Inspeccion $inspeccion, DetalleInspeccion $detalle): string
     {
         $empresaEquipo = $inspeccion->empresaEquipo;
-        $codigoInspeccion = $inspeccion->codigo_formateado ?: ('INSP-' . $inspeccion->id);
-        $serieEquipo = trim((string) ($empresaEquipo?->serie_codigo ?: ('EQ-' . $this->selectedEmpresaEquipoId)));
         $numeroInspeccion = (string) $this->resolveInspectionNumber();
 
-        $folder = Str::of($codigoInspeccion . '-' . $serieEquipo)->upper()->replaceMatches('/[^A-Z0-9\-]+/u', '_')->trim('_')->value();
-        if ($folder === '') {
-            $folder = 'INSPECCION';
-        }
-
-        $targetRelativePath = 'uploads/inspecciones/' . $folder . '/' . $numeroInspeccion;
+        $targetRelativePath = $this->resolveInspectionStoragePath($inspeccion, $numeroInspeccion, 'archivos_generados');
         $targetDirectory = public_path($targetRelativePath);
         if (!File::exists($targetDirectory)) {
             File::makeDirectory($targetDirectory, 0755, true);
@@ -2374,6 +2423,7 @@ class Formulario extends Component
         $selectedFiles = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', (int) $inspeccion->id)
             ->where('estado', 1)
+            ->where('archivo_origen', 'original')
             ->where('mostrar_certificado', 1)
             ->orderBy('id')
             ->get();
@@ -2427,7 +2477,7 @@ class Formulario extends Component
             $templateImage['path'] ?? null
         );
 
-        $fileName = now()->format('YmdHis') . '_certificado.pdf';
+        $fileName = $this->buildGeneratedPdfFileName('certificado', $numeroInspeccion);
         $absoluteFile = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
         File::put($absoluteFile, $pdfBinary);
 
@@ -2681,6 +2731,7 @@ class Formulario extends Component
 
         $this->inspectionFiles = InspeccionArchivoEquipo::query()
             ->where('inspeccion_id', $inspeccionId)
+            ->where('archivo_origen', 'original')
             ->latest('id')
             ->get()
             ->map(fn (InspeccionArchivoEquipo $archivo) => [
@@ -2873,6 +2924,8 @@ class Formulario extends Component
         );
     }
 }
+
+
 
 
 
